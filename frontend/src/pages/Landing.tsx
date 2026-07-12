@@ -267,7 +267,7 @@ const FeatureCard = ({ icon: Icon, title, desc }: FeatureCardProps) => {
 const Landing = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [, setScrollY] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Intersection observers for reveal animations
