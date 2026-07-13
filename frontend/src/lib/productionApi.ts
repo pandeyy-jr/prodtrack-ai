@@ -7,8 +7,9 @@ import type {
   ShiftSubmissionResponse,
   MachineMaster,
 } from '../types/production';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8001';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  'https://prodtrack-ai.onrender.com';
 const cache = new Map<string, { expiresAt: number; promise: Promise<unknown> }>();
 
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
