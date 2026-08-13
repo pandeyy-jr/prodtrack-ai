@@ -14,16 +14,16 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="border-b border-white/[0.05] bg-[#071712] px-5 py-3">
+    <nav className="border-b border-white/[0.08] bg-[#10100F] px-5 py-3">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A3FF12]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D99219]">
             ProdTrack
           </p>
-          <p className="truncate text-sm text-[#E8FDF5]/62">Production Intelligence System</p>
+          <p className="truncate text-sm text-[#A6A29A]">Production Intelligence System</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="rounded-lg border border-[#00FFC6]/18 bg-[#102A24] px-3 py-2 text-sm font-semibold capitalize text-[#00FFC6]">
+          <span className="border border-[#D99219]/25 bg-[#D99219]/10 px-3 py-2 text-sm font-semibold capitalize text-[#D99219]">
             {role ?? 'Guest'}
           </span>
           <Button variant="secondary" onClick={handleLogout}>

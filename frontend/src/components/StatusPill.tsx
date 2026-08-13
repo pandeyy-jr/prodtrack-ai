@@ -1,10 +1,10 @@
 import type { HourlyStatus } from '../types/production';
 
 const statusClasses: Record<HourlyStatus, string> = {
-  Good: 'border-[#A3FF12]/30 bg-[#A3FF12]/10 text-[#A3FF12]',
-  Warning: 'border-[#FFC857]/30 bg-[#FFC857]/10 text-[#FFC857]',
+  Good: 'border-[#D99219]/35 bg-[#D99219]/10 text-[#D99219]',
+  Warning: 'border-[#F59E0B]/30 bg-[#F59E0B]/10 text-[#F59E0B]',
   Poor: 'border-[#FF4D4D]/30 bg-[#FF4D4D]/10 text-[#FF4D4D]',
-  Pending: 'border-white/[0.05] bg-[#0B1F1A] text-[#E8FDF5]/55',
+  Pending: 'border-white/[0.08] bg-white/[0.03] text-[#A6A29A]',
 };
 
 interface StatusPillProps {
@@ -13,7 +13,7 @@ interface StatusPillProps {
 
 const StatusPill = ({ status }: StatusPillProps) => (
   <span
-    className={`inline-flex min-w-20 justify-center rounded-lg px-2.5 py-1 text-xs font-medium ${statusClasses[status]} border`}
+    className={`inline-flex min-w-20 justify-center rounded-none px-2.5 py-1 text-xs font-medium ${statusClasses[status]} border`}
   >
     {status}
   </span>

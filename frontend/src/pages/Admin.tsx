@@ -1,164 +1,100 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import {
-  Activity,
-  AlertTriangle,
-  ArrowLeft,
-  BarChart3,
-  Download,
-  Eye,
-  Factory,
-  FileSpreadsheet,
-  RefreshCw,
-  ShieldAlert,
-  Sparkles,
-  TrendingUp,
-  Settings,
-  Gauge,
+  Activity, AlertTriangle, ArrowLeft, BarChart3, Download,
+  Eye, Factory, FileSpreadsheet, RefreshCw, ShieldAlert,
+  Sparkles, TrendingUp, Settings, Gauge,
 } from 'lucide-react';
 import { Bar, Line, Pie } from '../components/ui/EChart';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import AppShell from '../components/layout/AppShell';
 import StatusPill from '../components/StatusPill';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
-import ChartPanel from '../components/ui/ChartPanel';
 import { exportReportsCsv, exportReportsXlsx } from '../lib/csvExport';
 import {
-  fetchProductionIntelligence,
-  fetchShiftReport,
-  fetchShiftReports,
-  updateReportReview,
+  fetchProductionIntelligence, fetchShiftReport,
+  fetchShiftReports, updateReportReview,
 } from '../lib/productionApi';
 import type { DetailedShiftReport, ProductionIntelligence, ShiftReport } from '../types/production';
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
+/* ── chart theme ──────────────────────────────────────────────── */
+const CO = {
+  responsive: true, maintainAspectRatio: false,
   plugins: {
-    legend: { labels: { color: '#E8FDF5', boxWidth: 10, usePointStyle: true } },
-    tooltip: {
-      backgroundColor: '#102A24',
-      borderColor: 'rgba(255,255,255,0.08)',
-      borderWidth: 1,
-      titleColor: '#E8FDF5',
-      bodyColor: '#E8FDF5',
-    },
+    legend: { labels: { color: '#a6a29a', boxWidth: 10, usePointStyle: true } },
+    tooltip: { backgroundColor: '#1c1b18', borderColor: 'rgba(255,255,255,0.10)', borderWidth: 1, titleColor: '#f0eee8', bodyColor: '#a6a29a' },
   },
   scales: {
-    x: {
-      ticks: { color: 'rgba(232,253,245,0.6)', maxRotation: 35 },
-      grid: { color: 'rgba(255,255,255,0.05)' },
-    },
-    y: {
-      ticks: { color: 'rgba(232,253,245,0.6)' },
-      grid: { color: 'rgba(255,255,255,0.05)' },
-    },
+    x: { ticks: { color: '#6b6860', maxRotation: 35 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+    y: { ticks: { color: '#6b6860' }, grid: { color: 'rgba(255,255,255,0.04)' } },
   },
 };
+const PIE_O = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { position: 'bottom' as const, labels: { color: '#a6a29a', boxWidth: 10, usePointStyle: true } } },
+};
+const CHART_COLORS = ['#d99219','#f0ae35','#f59e0b','#ff4d4f','#a6a29a','#6b6860','#f0eee8','#1c1b18'];
 
-const pieOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom' as const,
-      labels: { color: '#E8FDF5', boxWidth: 10, usePointStyle: true },
-    },
-  },
-};
+/* ── KPI card ─────────────────────────────────────────────────── */
+type Tone = 'gold' | 'warn' | 'danger' | 'muted';
 
 const KpiCard = ({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  tone = 'cyan',
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: typeof Activity;
-  tone?: 'lime' | 'cyan' | 'danger' | 'warn';
-}) => {
-  const toneConfig = {
-    lime: { bg: 'bg-[#A3FF12]/10', text: 'text-[#A3FF12]', border: 'border-[#A3FF12]/20' },
-    cyan: { bg: 'bg-[#00FFC8]/10', text: 'text-[#00FFC8]', border: 'border-[#00FFC8]/20' },
-    danger: { bg: 'bg-[#FF4D4F]/10', text: 'text-[#FF4D4F]', border: 'border-[#FF4D4F]/20' },
-    warn: { bg: 'bg-[#F59E0B]/10', text: 'text-[#F59E0B]', border: 'border-[#F59E0B]/20' },
-  }[tone];
-
+  label, value, hint, icon: Icon, tone = 'gold',
+}: { label: string; value: string; hint: string; icon: typeof Activity; tone?: Tone }) => {
+  const colors: Record<Tone, { icon: string; border: string; bg: string }> = {
+    gold:   { icon: '#d99219', border: 'rgba(217,146,25,.28)', bg: 'rgba(217,146,25,.08)' },
+    warn:   { icon: '#f59e0b', border: 'rgba(245,158,11,.25)', bg: 'rgba(245,158,11,.07)' },
+    danger: { icon: '#ff4d4f', border: 'rgba(255,77,79,.25)',  bg: 'rgba(255,77,79,.07)'  },
+    muted:  { icon: '#a6a29a', border: 'rgba(255,255,255,.10)', bg: 'rgba(255,255,255,.03)' },
+  };
+  const c = colors[tone];
   return (
-    <Card variant="default" className={`group p-6 hover:border-[#00FFC8]/30 transition-all ${toneConfig.border}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-          <p className="mt-4 text-3xl font-bold text-text-primary">{value}</p>
-          <p className="mt-2 text-xs text-text-secondary">{hint}</p>
-        </div>
-        <div className={`rounded-lg ${toneConfig.bg} p-4 ${toneConfig.text} flex-shrink-0 group-hover:scale-110 transition-transform`}>
-          <Icon size={24} />
-        </div>
+    <div className="adm-kpi-card" style={{ borderColor: c.border }}>
+      <div className="adm-kpi-icon" style={{ background: c.bg, color: c.icon }}>
+        <Icon size={18} />
       </div>
-    </Card>
+      <p className="adm-kpi-label">{label}</p>
+      <p className="adm-kpi-value">{value}</p>
+      <p className="adm-kpi-hint">{hint}</p>
+    </div>
   );
 };
 
+/* ── Chart card ───────────────────────────────────────────────── */
+const ChartCard = ({ title, sub, h = 260, children }: { title: string; sub?: string; h?: number; children: React.ReactNode }) => (
+  <div className="adm-chart-card">
+    <div className="adm-chart-header">
+      <p className="adm-chart-title">{title}</p>
+      {sub && <p className="adm-chart-sub">{sub}</p>}
+    </div>
+    <div style={{ height: h }}>{children}</div>
+  </div>
+);
+
+/* ══════════════════════════════════════════════════════════════ */
+/*  ADMIN PAGE                                                    */
+/* ══════════════════════════════════════════════════════════════ */
 const Admin = () => {
-  const [reports, setReports] = useState<ShiftReport[]>([]);
+  const [reports, setReports]               = useState<ShiftReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<DetailedShiftReport | null>(null);
-  const [intelligence, setIntelligence] = useState<ProductionIntelligence | null>(null);
-  const [remark, setRemark] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [shiftFilter, setShiftFilter] = useState('all');
-  const location = useLocation();
+  const [intelligence, setIntelligence]     = useState<ProductionIntelligence | null>(null);
+  const [remark, setRemark]                 = useState('');
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState('');
+  const [shiftFilter, setShiftFilter]       = useState('all');
 
   const fetchReports = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      const [reportsData, intelligenceData] = await Promise.all([
-        fetchShiftReports(),
-        fetchProductionIntelligence(),
-      ]);
-      setReports(reportsData);
-      setIntelligence(intelligenceData);
-    } catch {
-      setError('Backend is not reachable. Start FastAPI on port 8001.');
-    } finally {
-      setLoading(false);
-    }
+      const [r, i] = await Promise.all([fetchShiftReports(), fetchProductionIntelligence()]);
+      setReports(r); setIntelligence(i);
+    } catch { setError('Backend not reachable. Start FastAPI on port 8001.'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchReports();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.slice(1);
-      const timer = setTimeout(() => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [location]);
+  useEffect(() => { const t = window.setTimeout(() => { void fetchReports(); }, 0); return () => window.clearTimeout(t); }, []);
 
   const viewReport = async (id: number) => {
     setError('');
-    try {
-      const data = await fetchShiftReport(id);
-      setSelectedReport(data);
-      setRemark(data.admin_remark || '');
-    } catch {
-      setError('Report detail could not be loaded.');
-    }
+    try { const d = await fetchShiftReport(id); setSelectedReport(d); setRemark(d.admin_remark || ''); }
+    catch { setError('Could not load report detail.'); }
   };
 
   const updateReview = async (reviewed: boolean) => {
@@ -169,570 +105,433 @@ const Admin = () => {
   };
 
   const filteredReports = useMemo(
-    () => reports.filter((report) => shiftFilter === 'all' || report.shift === shiftFilter),
+    () => reports.filter((r) => shiftFilter === 'all' || r.shift === shiftFilter),
     [reports, shiftFilter],
   );
 
   const summary = useMemo(() => {
-    const underperforming = filteredReports.filter((report) => report.efficiency < 90).length;
-    const averageEfficiency =
-      filteredReports.length > 0
-        ? filteredReports.reduce((sum, report) => sum + report.efficiency, 0) / filteredReports.length
-        : 0;
-    const totalPieces = filteredReports.reduce((sum, report) => sum + report.total_pieces, 0);
-    const bestMachine = filteredReports.reduce<ShiftReport | null>(
-      (best, report) => (!best || report.efficiency > best.efficiency ? report : best),
-      null,
-    );
-
-    return { underperforming, averageEfficiency, totalPieces, bestMachine };
+    const underperforming = filteredReports.filter((r) => r.efficiency < 90).length;
+    const avg = filteredReports.length > 0 ? filteredReports.reduce((s, r) => s + r.efficiency, 0) / filteredReports.length : 0;
+    const total = filteredReports.reduce((s, r) => s + r.total_pieces, 0);
+    const best = filteredReports.reduce<ShiftReport | null>((b, r) => (!b || r.efficiency > b.efficiency ? r : b), null);
+    return { underperforming, avg, total, best };
   }, [filteredReports]);
 
+  /* chart data */
   const shiftTrendData = {
-    labels: (intelligence?.shift_trends ?? []).map((trend) => trend.label),
-    datasets: [
-      {
-        label: 'Shift efficiency %',
-        data: (intelligence?.shift_trends ?? []).map((trend) => trend.efficiency),
-        borderColor: '#A3FF12',
-        backgroundColor: 'rgba(163,255,18,0.12)',
-      },
-    ],
+    labels: (intelligence?.shift_trends ?? []).map((t) => t.label),
+    datasets: [{ label: 'Efficiency %', data: (intelligence?.shift_trends ?? []).map((t) => t.efficiency), borderColor: '#d99219', backgroundColor: 'rgba(217,146,25,.10)', tension: 0.35 }],
   };
-
-  const machineComparisonData = {
-    labels: (intelligence?.machine_comparison ?? []).map((machine) => machine.machine_no),
-    datasets: [
-      {
-        label: 'Avg efficiency %',
-        data: (intelligence?.machine_comparison ?? []).map(
-          (machine) => machine.average_efficiency,
-        ),
-        backgroundColor: (intelligence?.machine_comparison ?? []).map((machine) =>
-          machine.average_efficiency < 90 ? '#FF4D4D' : '#00FFC6',
-        ),
-      },
-    ],
+  const machineCompData = {
+    labels: (intelligence?.machine_comparison ?? []).map((m) => m.machine_no),
+    datasets: [{ label: 'Avg efficiency %', data: (intelligence?.machine_comparison ?? []).map((m) => m.average_efficiency),
+      backgroundColor: (intelligence?.machine_comparison ?? []).map((m) => m.average_efficiency < 90 ? '#ff4d4f' : '#d99219') }],
   };
-
+  const shiftCompData = {
+    labels: (intelligence?.shift_comparison ?? []).map((s) => `Shift ${s.label}`),
+    datasets: [{ label: 'Target achievement %', data: (intelligence?.shift_comparison ?? []).map((s) => s.efficiency), backgroundColor: ['#d99219','#f0ae35','#f59e0b'] }],
+  };
+  const dailyData = {
+    labels: (intelligence?.daily_production ?? []).map((d) => d.label),
+    datasets: [{ label: 'Daily output', data: (intelligence?.daily_production ?? []).map((d) => d.total_pieces), borderColor: '#f0ae35', backgroundColor: 'rgba(240,174,53,.09)', tension: 0.35 }],
+  };
   const contributionData = {
-    labels: filteredReports.slice(0, 6).map((report) => report.machine_no),
-    datasets: [
-      {
-        data: filteredReports.slice(0, 6).map((report) => report.total_pieces),
-        backgroundColor: ['#A3FF12', '#00FFC6', '#FFC857', '#FF4D4D', '#7AA7FF', '#F8A6FF'],
-      },
-    ],
+    labels: filteredReports.slice(0, 6).map((r) => r.machine_no),
+    datasets: [{ data: filteredReports.slice(0, 6).map((r) => r.total_pieces), backgroundColor: CHART_COLORS }],
   };
 
-  const shiftComparisonData = {
-    labels: (intelligence?.shift_comparison ?? []).map((item) => `Shift ${item.label}`),
-    datasets: [{
-      label: 'Target achievement %',
-      data: (intelligence?.shift_comparison ?? []).map((item) => item.efficiency),
-      backgroundColor: ['#A3FF12', '#00FFC6', '#FFC857'],
-    }],
-  };
-
-  const periodTrendData = {
-    labels: (intelligence?.daily_production ?? []).map((item) => item.label),
-    datasets: [{
-      label: 'Daily production',
-      data: (intelligence?.daily_production ?? []).map((item) => item.total_pieces),
-      borderColor: '#00FFC6',
-      backgroundColor: 'rgba(0,255,198,0.12)',
-    }],
-  };
-
+  /* ── REPORT DETAIL VIEW ──────────────────────────────────── */
   const renderDetail = () => {
     if (!selectedReport) return null;
-
-    const hourlyTrendData = {
-      labels: selectedReport.logs.map((log) => log.time_slot),
-      datasets: [
-        {
-          label: 'Pieces',
-          data: selectedReport.logs.map((log) => log.pieces),
-          borderColor: '#00FFC8',
-          backgroundColor: 'rgba(0,255,198,0.08)',
-        },
-      ],
+    const hourlyTrend = {
+      labels: selectedReport.logs.map((l) => l.time_slot),
+      datasets: [{ label: 'Pieces', data: selectedReport.logs.map((l) => l.pieces), borderColor: '#d99219', backgroundColor: 'rgba(217,146,25,.08)', tension: 0.35 }],
     };
-
-    const hourlyContributionData = {
-      labels: selectedReport.logs.map((log) => log.time_slot),
-      datasets: [
-        {
-          data: selectedReport.logs.map((log) => log.pieces),
-          backgroundColor: ['#A3FF12', '#00FFC8', '#F59E0B', '#FF4D4F', '#7AA7FF', '#F8A6FF', '#00E676', '#FFC857'],
-        },
-      ],
+    const hourlyPie = {
+      labels: selectedReport.logs.map((l) => l.time_slot),
+      datasets: [{ data: selectedReport.logs.map((l) => l.pieces), backgroundColor: CHART_COLORS }],
     };
-
     return (
-      <div className="grid grid-cols-12 gap-6">
-        {/* Back Button */}
-        <div className="col-span-12">
-          <Button variant="secondary" onClick={() => setSelectedReport(null)}>
-            <ArrowLeft size={16} /> Back to Reports
-          </Button>
-        </div>
-
-        {/* Production Trend */}
-        <div className="col-span-12 lg:col-span-8">
-          <Card variant="default" className="overflow-hidden">
-            <div className="border-b border-white/[0.08] px-6 py-5">
-              <h3 className="text-lg font-semibold">Production Trend</h3>
-              <p className="mt-1 text-sm text-text-secondary">
-                Shift {selectedReport.shift} • {selectedReport.machine_no} • {selectedReport.toy_code}
-              </p>
-            </div>
-            <div className="p-6">
-              <div className="h-80">
-                <Line
-                  data={hourlyTrendData}
-                  options={chartOptions}
-                />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Insights Panel */}
-        <div className="col-span-12 lg:col-span-4">
-          <Card variant="default" className="h-full overflow-hidden flex flex-col">
-            <div className="border-b border-white/[0.08] px-6 py-5">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold">Insights</h3>
+      <div className="adm-detail">
+        <style>{adminStyles}</style>
+        <button className="adm-back-btn" onClick={() => setSelectedReport(null)}>
+          <ArrowLeft size={15} /> Back to Reports
+        </button>
+        <div className="adm-detail-grid">
+          {/* Trend */}
+          <div className="adm-detail-main">
+            <ChartCard title="Production Trend"
+              sub={`Shift ${selectedReport.shift} · ${selectedReport.machine_no} · ${selectedReport.toy_code}`}
+              h={300}>
+              <Line data={hourlyTrend} options={CO} />
+            </ChartCard>
+          </div>
+          {/* Insights */}
+          <div className="adm-detail-side">
+            <div className="adm-chart-card adm-insights-card">
+              <div className="adm-chart-header">
+                <p className="adm-chart-title">Insights</p>
                 <StatusPill status={selectedReport.status} />
               </div>
-              <p className="mt-1 text-sm text-text-secondary">Data-driven recommendations</p>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <div className="rounded-lg bg-white/[0.04] p-4 mb-5 text-sm leading-6 text-text-secondary border border-white/[0.08]">
-                {selectedReport.analytics.remark}
-              </div>
-              <div className="space-y-3">
-                {selectedReport.insights.map((insight, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-3 rounded-lg bg-white/[0.035] p-3 text-sm text-text-secondary border border-white/[0.08]"
-                  >
-                    <ShieldAlert className="flex-shrink-0 mt-0.5 text-accent" size={16} />
-                    <span>{insight}</span>
+              <div className="adm-insight-remark">{selectedReport.analytics.remark}</div>
+              <div className="adm-insight-list">
+                {selectedReport.insights.map((ins, i) => (
+                  <div key={i} className="adm-insight-item">
+                    <ShieldAlert size={13} className="adm-insight-icon" />
+                    <span>{ins}</span>
                   </div>
                 ))}
               </div>
             </div>
-          </Card>
-        </div>
-
-        {/* Efficiency Context */}
-        <div className="col-span-12 lg:col-span-6">
-          <Card variant="default" className="overflow-hidden">
-            <div className="border-b border-white/[0.08] px-6 py-5">
-              <h3 className="text-lg font-semibold">Current vs Target</h3>
-              <p className="mt-1 text-sm text-text-secondary">This report efficiency comparison</p>
-            </div>
-            <div className="p-6">
-              <div className="h-72">
-                <Bar
-                  data={{
-                    labels: ['Efficiency'],
-                    datasets: [
-                      {
-                        label: `${selectedReport.machine_no}`,
-                        data: [selectedReport.efficiency],
-                        backgroundColor:
-                          selectedReport.efficiency >= 90
-                            ? '#00FFC8'
-                            : selectedReport.efficiency >= 75
-                              ? '#F59E0B'
-                              : '#FF4D4F',
-                      },
-                    ],
-                  }}
-                  options={chartOptions}
-                />
+          </div>
+          {/* Efficiency bar */}
+          <div className="adm-detail-half">
+            <ChartCard title="Current vs Target" sub="Efficiency comparison" h={240}>
+              <Bar data={{ labels: ['Efficiency'], datasets: [{ label: selectedReport.machine_no, data: [selectedReport.efficiency],
+                backgroundColor: selectedReport.efficiency >= 90 ? '#d99219' : selectedReport.efficiency >= 75 ? '#f59e0b' : '#ff4d4f' }] }} options={CO} />
+            </ChartCard>
+          </div>
+          {/* Hourly pie */}
+          <div className="adm-detail-half">
+            <ChartCard title="Hourly Breakdown" sub="Production by time slot" h={240}>
+              <Pie data={hourlyPie} options={PIE_O} />
+            </ChartCard>
+          </div>
+          {/* Review */}
+          <div className="adm-detail-full">
+            <div className="adm-chart-card adm-review-card">
+              <div className="adm-chart-header">
+                <p className="adm-chart-title">Management Review</p>
+                <p className="adm-chart-sub">Add notes and finalise this report</p>
+              </div>
+              <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={4}
+                placeholder="Add management notes, observations, or action items…"
+                className="adm-textarea" />
+              <div className="adm-review-actions">
+                <button className="adm-btn-secondary" onClick={() => updateReview(false)}>Mark for Review</button>
+                <button className="adm-btn-primary" onClick={() => updateReview(true)}>Mark as Reviewed</button>
               </div>
             </div>
-          </Card>
-        </div>
-
-        {/* Hourly Contribution */}
-        <div className="col-span-12 lg:col-span-6">
-          <Card variant="default" className="overflow-hidden">
-            <div className="border-b border-white/[0.08] px-6 py-5">
-              <h3 className="text-lg font-semibold">Hourly Breakdown</h3>
-              <p className="mt-1 text-sm text-text-secondary">Production distribution by time slot</p>
-            </div>
-            <div className="p-6">
-              <div className="h-72">
-                <Pie
-                  data={hourlyContributionData}
-                  options={pieOptions}
-                />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Admin Review */}
-        <div className="col-span-12">
-          <Card variant="default" className="p-6">
-            <h3 className="text-lg font-semibold mb-2">Management Review</h3>
-            <p className="text-sm text-text-secondary mb-5">Add notes and finalize this production report.</p>
-            <textarea
-              value={remark}
-              onChange={(event) => setRemark(event.target.value)}
-              rows={4}
-              placeholder="Add management notes, observations, or action items..."
-              className="control w-full rounded-lg p-4 text-sm outline-none focus:outline-none bg-white/[0.04] border border-white/[0.08] text-text-primary placeholder:text-text-secondary"
-            />
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Button variant="secondary" onClick={() => updateReview(false)} className="w-full">
-                Mark for Review
-              </Button>
-              <Button onClick={() => updateReview(true)} className="w-full">
-                Mark as Reviewed
-              </Button>
-            </div>
-          </Card>
+          </div>
         </div>
       </div>
     );
   };
 
-  return (
-    <DashboardLayout title="Production Performance Center" subtitle="Admin Analytics">
-      {selectedReport ? (
-        renderDetail()
-      ) : (
-        <div id="dashboard" className="grid grid-cols-12 gap-6">
-          {/* Header Controls */}
-          <div className="col-span-12">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              {error && (
-                <div className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger border border-danger/20 flex items-center gap-2">
-                  <AlertTriangle size={18} />
-                  {error}
-                </div>
-              )}
-              <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row items-center">
-                <label className="control flex h-11 items-center gap-2 rounded-lg px-4 flex-shrink-0">
-                  <Gauge size={17} className="text-text-secondary" />
-                  <select
-                    value={shiftFilter}
-                    onChange={(event) => setShiftFilter(event.target.value)}
-                    className="bg-transparent text-sm outline-none focus:outline-none"
-                    aria-label="Filter reports by shift"
-                  >
-                    <option value="all">All Shifts</option>
-                    <option value="A">Shift A</option>
-                    <option value="B">Shift B</option>
-                    <option value="C">Shift C</option>
-                  </select>
-                </label>
-                <div className="flex gap-2 flex-wrap justify-end">
-                  <Button
-                    variant="secondary"
-                    onClick={fetchReports}
-                    className="h-11"
-                  >
-                    <RefreshCw size={16} /> Refresh
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => exportReportsCsv(filteredReports)}
-                    disabled={filteredReports.length === 0}
-                    className="h-11"
-                  >
-                    <Download size={16} /> CSV
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => exportReportsXlsx(filteredReports)}
-                    disabled={filteredReports.length === 0}
-                    className="h-11"
-                  >
-                    <FileSpreadsheet size={16} /> Excel
-                  </Button>
-                </div>
-              </div>
+  /* ── MAIN DASHBOARD ──────────────────────────────────────── */
+  const renderDashboard = () => (
+    <div className="adm-dashboard">
+      <style>{adminStyles}</style>
+
+      {/* Page header */}
+      <div className="adm-page-header">
+        <div>
+          <p className="adm-eyebrow">ADMIN / ANALYTICS</p>
+          <h1 className="adm-page-title">Production Performance</h1>
+          <p className="adm-page-sub">
+            {loading ? 'Loading…' : `${reports.length} reports · ${filteredReports.length} in view`}
+          </p>
+        </div>
+
+        {/* Toolbar */}
+        <div className="adm-toolbar">
+          {error && (
+            <div className="adm-error-badge">
+              <AlertTriangle size={13} /> {error}
             </div>
-          </div>
+          )}
+          <label className="adm-control-field" aria-label="Filter by shift">
+            <Gauge size={13} />
+            <select value={shiftFilter} onChange={(e) => setShiftFilter(e.target.value)} className="adm-bare-select">
+              <option value="all">All Shifts</option>
+              <option value="A">Shift A</option>
+              <option value="B">Shift B</option>
+              <option value="C">Shift C</option>
+            </select>
+          </label>
+          <button className="adm-btn-ghost" onClick={fetchReports} title="Refresh data">
+            <RefreshCw size={14} />
+          </button>
+          <button className="adm-btn-secondary" onClick={() => exportReportsCsv(filteredReports)} disabled={!filteredReports.length}>
+            <Download size={13} /> CSV
+          </button>
+          <button className="adm-btn-secondary" onClick={() => exportReportsXlsx(filteredReports)} disabled={!filteredReports.length}>
+            <FileSpreadsheet size={13} /> Excel
+          </button>
+        </div>
+      </div>
 
-          {/* Primary KPIs */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Total Production"
-              value={summary.totalPieces.toLocaleString()}
-              hint={`${filteredReports.length} reports in view`}
-              icon={Factory}
-              tone="lime"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Avg Efficiency"
-              value={`${(intelligence?.average_efficiency ?? summary.averageEfficiency).toFixed(1)}%`}
-              hint={`${summary.underperforming} below 90% target`}
-              icon={Activity}
-              tone="cyan"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Best Performer"
-              value={summary.bestMachine?.machine_no ?? '—'}
-              hint={summary.bestMachine ? `${summary.bestMachine.efficiency.toFixed(1)}% eff.` : 'No data'}
-              icon={TrendingUp}
-              tone="lime"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Needs Attention"
-              value={intelligence?.worst_performing_machine?.machine_no ?? '—'}
-              hint={intelligence?.worst_performing_machine ? `${intelligence.worst_performing_machine.efficiency.toFixed(1)}% eff.` : 'No data'}
-              icon={AlertTriangle}
-              tone="danger"
-            />
-          </div>
+      {/* KPI grid — 4+4 compact cards */}
+      <div id="dashboard" className="adm-kpi-grid">
+        <KpiCard label="Total Production" value={summary.total.toLocaleString()} hint={`${filteredReports.length} reports`} icon={Factory} tone="gold" />
+        <KpiCard label="Avg Efficiency"   value={`${(intelligence?.average_efficiency ?? summary.avg).toFixed(1)}%`} hint={`${summary.underperforming} below 90%`} icon={Activity} tone="gold" />
+        <KpiCard label="Best Performer"   value={summary.best?.machine_no ?? '—'} hint={summary.best ? `${summary.best.efficiency.toFixed(1)}% eff.` : 'No data'} icon={TrendingUp} tone="gold" />
+        <KpiCard label="Needs Attention"  value={intelligence?.worst_performing_machine?.machine_no ?? '—'} hint={intelligence?.worst_performing_machine ? `${intelligence.worst_performing_machine.efficiency.toFixed(1)}% eff.` : 'No data'} icon={AlertTriangle} tone="danger" />
+        <KpiCard label="OEE Score"         value={`${(intelligence?.kpis.oee_score ?? 0).toFixed(1)}%`} hint="Overall equipment effectiveness" icon={Activity} tone="muted" />
+        <KpiCard label="Productivity"      value={`${(intelligence?.kpis.productivity_index ?? 0).toFixed(1)}`} hint="Performance index" icon={TrendingUp} tone="muted" />
+        <KpiCard label="Quality Rate"      value={`${(intelligence?.kpis.quality_rate ?? 100).toFixed(1)}%`} hint="Based on available data" icon={ShieldAlert} tone="warn" />
+        <KpiCard label="Next Shift Forecast" value={(intelligence?.forecast.expected_next_shift ?? 0).toLocaleString()} hint={`${intelligence?.forecast.confidence ?? 0}% confidence · Risk: ${intelligence?.forecast.risk ?? '—'}`} icon={Sparkles} tone="gold" />
+      </div>
 
-          {/* Secondary KPIs */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="OEE Score"
-              value={`${(intelligence?.kpis.oee_score ?? 0).toFixed(1)}%`}
-              hint="Overall equipment effectiveness"
-              icon={Activity}
-              tone="cyan"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Productivity"
-              value={`${(intelligence?.kpis.productivity_index ?? 0).toFixed(1)}`}
-              hint="Performance index"
-              icon={TrendingUp}
-              tone="lime"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Quality Rate"
-              value={`${(intelligence?.kpis.quality_rate ?? 100).toFixed(1)}%`}
-              hint="Based on available data"
-              icon={ShieldAlert}
-              tone="warn"
-            />
-          </div>
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <KpiCard
-              label="Next Shift Forecast"
-              value={(intelligence?.forecast.expected_next_shift ?? 0).toLocaleString()}
-              hint={`${intelligence?.forecast.confidence ?? 0}% confidence`}
-              icon={Sparkles}
-              tone="cyan"
-            />
-          </div>
+      {/* Charts row 1 */}
+      <div id="analytics" className="adm-charts-2col">
+        <ChartCard title="Efficiency Across Shifts" sub="Movement by shift and machine" h={260}>
+          <Line data={shiftTrendData} options={CO} />
+        </ChartCard>
+        <ChartCard title="Machine Comparison" sub="Average efficiency per machine" h={260}>
+          <Bar data={machineCompData} options={CO} />
+        </ChartCard>
+      </div>
 
-          <div id="analytics" className="col-span-12 lg:col-span-8">
-            <ChartPanel title="Line Chart Across Shifts" subtitle="Efficiency movement by shift">
-              <div className="h-80">
-                <Line data={shiftTrendData} options={chartOptions} />
-              </div>
-            </ChartPanel>
-          </div>
+      {/* Charts row 2 */}
+      <div className="adm-charts-2col">
+        <ChartCard title="Shift Comparison" sub="Target achievement by shift" h={240}>
+          <Bar data={shiftCompData} options={CO} />
+        </ChartCard>
+        <ChartCard title="Daily Production" sub="Output over time" h={240}>
+          <Line data={dailyData} options={CO} />
+        </ChartCard>
+      </div>
 
-          <div className="col-span-12 lg:col-span-6">
-            <ChartPanel title="Shift Comparison" subtitle="Target achievement by shift">
-              <div className="h-72">
-                <Bar data={shiftComparisonData} options={chartOptions} />
-              </div>
-            </ChartPanel>
+      {/* Production contribution + AI insights */}
+      <div className="adm-charts-aside">
+        <ChartCard title="Production Contribution" sub="Pieces by machine" h={240}>
+          <Pie data={contributionData} options={PIE_O} />
+        </ChartCard>
+        <div id="insights" className="adm-chart-card adm-ai-card">
+          <div className="adm-chart-header">
+            <p className="adm-chart-title">AI Decision Support</p>
+            <p className="adm-chart-sub">Operational recommendations</p>
           </div>
-          <div className="col-span-12 lg:col-span-6">
-            <ChartPanel title="Daily Production Trend" subtitle="Production output over time">
-              <div className="h-72">
-                <Line data={periodTrendData} options={chartOptions} />
+          <div className="adm-ai-list">
+            {(intelligence?.decision_support ?? []).map((d) => (
+              <div key={d} className="adm-ai-item">
+                <ShieldAlert size={12} className="adm-ai-icon" />
+                <span>{d}</span>
               </div>
-            </ChartPanel>
-          </div>
-          <div id="insights" className="col-span-12">
-            <Card className="h-full p-6">
-              <h2 className="text-base font-semibold">AI Decision Support</h2>
-              <p className="mt-1 text-sm text-[#64748B]">Operational recommendations from current production data</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {(intelligence?.decision_support ?? []).map((decision) => (
-                  <div
-                    key={decision}
-                    className="flex gap-3 rounded-xl bg-white/[0.035] p-4 text-sm text-[#94A3B8]"
-                    title={decision}
-                  >
-                    <ShieldAlert className="mt-0.5 shrink-0 text-[#00FFC6]" size={16} />
-                    <span>{decision}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          <div className="col-span-12 lg:col-span-6">
-            <ChartPanel title="Machine vs Machine" subtitle="Average efficiency comparison">
-              <div className="h-72">
-                <Bar data={machineComparisonData} options={chartOptions} />
-              </div>
-            </ChartPanel>
-          </div>
-          <div className="col-span-12 lg:col-span-6">
-            <ChartPanel title="Production Contribution" subtitle="Pieces by machine/report">
-              <div className="h-72">
-                <Pie data={contributionData} options={pieOptions} />
-              </div>
-            </ChartPanel>
-          </div>
-
-          <div id="reports" className="col-span-12">
-            <Card variant="default" className="overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-white/[0.08] px-6 py-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                  <BarChart3 size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-text-primary">Shift Reports</h2>
-                  <p className="mt-0.5 text-sm text-text-secondary">Machine performance data and review status</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/[0.08] bg-white/[0.02] text-xs uppercase tracking-wider">
-                      <th className="px-6 py-4 text-left font-semibold text-text-secondary">Date</th>
-                      <th className="px-6 py-4 text-left font-semibold text-text-secondary">Shift</th>
-                      <th className="px-6 py-4 text-left font-semibold text-text-secondary">Machine</th>
-                      <th className="px-6 py-4 text-left font-semibold text-text-secondary">Product</th>
-                      <th className="px-6 py-4 text-center font-semibold text-text-secondary">Production</th>
-                      <th className="px-6 py-4 text-right font-semibold text-text-secondary">Efficiency</th>
-                      <th className="px-6 py-4 text-center font-semibold text-text-secondary">Status</th>
-                      <th className="px-6 py-4 text-center font-semibold text-text-secondary">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.08]">
-                    {filteredReports.map((report) => (
-                      <tr
-                        key={report.id}
-                        className={`transition-colors hover:bg-white/[0.04] ${
-                          report.efficiency < 90 ? 'bg-danger/8' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 text-sm">{report.date}</td>
-                        <td className="px-6 py-4 text-sm font-medium">{report.shift}</td>
-                        <td className="px-6 py-4 text-sm font-semibold">{report.machine_no}</td>
-                        <td className="px-6 py-4 text-sm text-text-secondary">{report.toy_code}</td>
-                        <td className="px-6 py-4 text-center text-sm">
-                          <span className="inline-block">
-                            {report.total_pieces.toLocaleString()}
-                            <span className="ml-1 text-text-secondary">/ {report.target_pieces.toLocaleString()}</span>
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right text-sm font-semibold">
-                          <span className={`inline-flex items-center gap-2 ${
-                            report.efficiency >= 90 ? 'text-primary' : 'text-danger'
-                          }`}>
-                            {report.analytics.sudden_drop && (
-                              <AlertTriangle size={16} className="flex-shrink-0" />
-                            )}
-                            {report.efficiency.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <StatusPill status={report.status} />
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => viewReport(report.id)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.045] text-text-secondary transition-all hover:bg-accent/15 hover:text-accent"
-                            title="View detailed report"
-                          >
-                            <Eye size={17} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {!loading && filteredReports.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="px-6 py-12 text-center text-sm text-text-secondary">
-                          No shift reports available. Try adjusting filters or check backend connectivity.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* System Settings Card */}
-          <div id="settings" className="col-span-12">
-            <Card variant="default" className="p-6">
-              <div className="flex items-center gap-3 border-b border-white/[0.08] pb-4 mb-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00E676]/15 text-[#00E676]">
-                  <Settings size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-text-primary">System Settings</h2>
-                  <p className="mt-0.5 text-sm text-text-secondary">Administrative configuration and controls</p>
-                </div>
-              </div>
-              
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                  <p className="text-sm font-semibold text-text-primary">Database Sync</p>
-                  <p className="mt-1 text-xs text-text-secondary">Synchronize with local SQLite instance</p>
-                  <div className="mt-4 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Status</span>
-                    <span className="font-semibold text-primary">Connected</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Path</span>
-                    <span className="font-semibold text-text-primary">sqlite:///./prodtrack.db</span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                  <p className="text-sm font-semibold text-text-primary">Performance Alerting</p>
-                  <p className="mt-1 text-xs text-text-secondary">KPI boundaries and trigger notifications</p>
-                  <div className="mt-4 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Underperformance Threshold</span>
-                    <span className="font-semibold text-[#FF4D4F]">90.0%</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Sudden Drop Detection</span>
-                    <span className="font-semibold text-warning">Enabled</span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                  <p className="text-sm font-semibold text-text-primary">AI Models Config</p>
-                  <p className="mt-1 text-xs text-text-secondary">Next shift forecasting model parameters</p>
-                  <div className="mt-4 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Model Type</span>
-                    <span className="font-semibold text-primary">Exponential Smoothing</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-text-secondary">Confidence Interval</span>
-                    <span className="font-semibold text-text-primary">95.0%</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
+            ))}
+            {!intelligence?.decision_support?.length && (
+              <p className="adm-ai-empty">No recommendations yet. Submit some shift reports.</p>
+            )}
           </div>
         </div>
-      )}
-    </DashboardLayout>
+      </div>
+
+      {/* Reports table */}
+      <div id="reports" className="adm-chart-card adm-table-card">
+        <div className="adm-table-header">
+          <div className="adm-table-icon"><BarChart3 size={17} /></div>
+          <div>
+            <p className="adm-chart-title">Shift Reports</p>
+            <p className="adm-chart-sub">Machine performance data and review status</p>
+          </div>
+        </div>
+        <div className="adm-table-scroll">
+          <table className="adm-table">
+            <thead>
+              <tr>
+                {['Date','Shift','Machine','Product','Production','Efficiency','Status',''].map((h) => (
+                  <th key={h} className="adm-th">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredReports.map((r) => (
+                <tr key={r.id} className={`adm-tr ${r.efficiency < 90 ? 'adm-tr--warn' : ''}`}>
+                  <td className="adm-td">{r.date}</td>
+                  <td className="adm-td adm-td-bold">{r.shift}</td>
+                  <td className="adm-td adm-td-bold">{r.machine_no}</td>
+                  <td className="adm-td adm-td-muted">{r.toy_code}</td>
+                  <td className="adm-td adm-td-num">
+                    {r.total_pieces.toLocaleString()}
+                    <span className="adm-td-target"> / {r.target_pieces.toLocaleString()}</span>
+                  </td>
+                  <td className="adm-td adm-td-num">
+                    <span className={r.efficiency >= 90 ? 'adm-eff-ok' : 'adm-eff-bad'}>
+                      {r.analytics.sudden_drop && <AlertTriangle size={12} />}
+                      {r.efficiency.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="adm-td"><StatusPill status={r.status} /></td>
+                  <td className="adm-td adm-td-action">
+                    <button className="adm-view-btn" onClick={() => viewReport(r.id)} title="View report">
+                      <Eye size={15} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!loading && filteredReports.length === 0 && (
+                <tr><td colSpan={8} className="adm-td-empty">No reports found. Adjust filter or check backend.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div id="settings" className="adm-chart-card adm-settings-card">
+        <div className="adm-chart-header adm-chart-header--border">
+          <div className="adm-table-icon"><Settings size={17} /></div>
+          <div>
+            <p className="adm-chart-title">System Settings</p>
+            <p className="adm-chart-sub">Administrative configuration</p>
+          </div>
+        </div>
+        <div className="adm-settings-grid">
+          {[
+            { t:'Database Sync', s:'SQLite connection', rows:[['Status','Connected'],['Path','prodtrack.db']] },
+            { t:'Performance Alerts', s:'KPI thresholds', rows:[['Underperformance','< 90.0%'],['Sudden Drop','Enabled']] },
+            { t:'AI Forecast', s:'Model parameters', rows:[['Model','Exp. Smoothing'],['Interval','95%']] },
+          ].map(({ t, s, rows }) => (
+            <div key={t} className="adm-settings-item">
+              <p className="adm-settings-title">{t}</p>
+              <p className="adm-settings-sub">{s}</p>
+              {rows.map(([k, v]) => (
+                <div key={k} className="adm-settings-row">
+                  <span className="adm-settings-key">{k}</span>
+                  <span className="adm-settings-val">{v}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const handleNavClick = (id: string) => {
+    setSelectedReport(null);
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  return (
+    <AppShell
+      title="Performance Centre"
+      subtitle="Admin · Production Analytics"
+      status={loading ? 'Saving' : error ? 'Attention' : 'Online'}
+      onNavClick={handleNavClick}
+      activeNav="dashboard"
+    >
+      {selectedReport ? renderDetail() : renderDashboard()}
+    </AppShell>
   );
 };
 
 export default Admin;
+
+const adminStyles = `
+  /* ── Page header ──────────────────────────────────────────── */
+  .adm-page-header{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .adm-eyebrow{font:500 9px 'DM Mono',monospace;letter-spacing:2px;color:#d99219;margin:0 0 6px;text-transform:uppercase}
+  .adm-page-title{font:700 26px 'Barlow Condensed',Impact,sans-serif;text-transform:uppercase;color:#f0eee8;margin:0 0 4px}
+  .adm-page-sub{font-size:12px;color:#a6a29a;margin:0}
+
+  /* ── Toolbar ──────────────────────────────────────────────── */
+  .adm-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .adm-control-field{display:inline-flex;align-items:center;gap:7px;padding:0 12px;height:36px;border:1px solid rgba(255,255,255,.10);background:#1c1b18;color:#a6a29a;cursor:pointer;font-size:12px}
+  .adm-control-field:focus-within{border-color:rgba(217,146,25,.55)}
+  .adm-bare-select{border:0;background:transparent;color:#f0eee8;font:500 12px Manrope,sans-serif;outline:none;cursor:pointer}
+  .adm-bare-select option{background:#1c1b18}
+  .adm-btn-primary{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border:0;background:#d99219;color:#17130c;font:700 10px Manrope,sans-serif;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:.15s}
+  .adm-btn-primary:hover{background:#f0ae35}
+  .adm-btn-secondary{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#e4ded4;font:600 10px Manrope,sans-serif;text-transform:uppercase;cursor:pointer;transition:.15s}
+  .adm-btn-secondary:hover:not(:disabled){border-color:rgba(217,146,25,.5);color:#d99219}
+  .adm-btn-secondary:disabled{opacity:.38;cursor:not-allowed}
+  .adm-btn-ghost{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#a6a29a;cursor:pointer;transition:.15s}
+  .adm-btn-ghost:hover{border-color:rgba(217,146,25,.5);color:#d99219}
+  .adm-error-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid rgba(255,77,79,.3);background:rgba(255,77,79,.07);color:#ff4d4f;font-size:11px}
+
+  /* ── KPI grid ─────────────────────────────────────────────── */
+  .adm-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  @media(max-width:1100px){.adm-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.adm-kpi-grid{grid-template-columns:1fr 1fr}}
+  .adm-kpi-card{background:#171715;border:1px solid rgba(255,255,255,.10);padding:16px;display:flex;flex-direction:column;gap:0;transition:border-color .15s}
+  .adm-kpi-card:hover{border-color:rgba(217,146,25,.30)}
+  .adm-kpi-icon{width:36px;height:36px;display:grid;place-items:center;margin-bottom:12px;flex-shrink:0}
+  .adm-kpi-label{font:600 9px 'DM Mono',monospace;letter-spacing:1.4px;text-transform:uppercase;color:#a6a29a;margin:0 0 6px}
+  .adm-kpi-value{font:700 22px 'Barlow Condensed',Impact,sans-serif;color:#f0eee8;margin:0 0 4px;line-height:1}
+  .adm-kpi-hint{font-size:10px;color:#6b6860;margin:0}
+
+  /* ── Charts ───────────────────────────────────────────────── */
+  .adm-dashboard{display:flex;flex-direction:column;gap:16px}
+  .adm-charts-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:860px){.adm-charts-2col{grid-template-columns:1fr}}
+  .adm-charts-aside{display:grid;grid-template-columns:1fr 1.6fr;gap:12px}
+  @media(max-width:860px){.adm-charts-aside{grid-template-columns:1fr}}
+  .adm-chart-card{background:#171715;border:1px solid rgba(255,255,255,.10)}
+  .adm-chart-header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .adm-chart-header--border{border-bottom:1px solid rgba(255,255,255,.08)}
+  .adm-chart-title{font:700 12px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.8px;color:#f0eee8;margin:0}
+  .adm-chart-sub{font-size:11px;color:#a6a29a;margin:0}
+  .adm-chart-card>div:last-child{padding:14px 18px}
+
+  /* ── Section head ─────────────────────────────────────────── */
+  .adm-section-head{margin-bottom:14px}
+  .adm-section-title{font:700 18px 'Barlow Condensed',Impact,sans-serif;text-transform:uppercase;color:#f0eee8;margin:4px 0 0}
+
+  /* ── AI card ──────────────────────────────────────────────── */
+  .adm-ai-card{display:flex;flex-direction:column}
+  .adm-ai-list{padding:12px 18px 16px;display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto;max-height:300px}
+  .adm-ai-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(255,255,255,.025);font-size:11px;color:#a6a29a;line-height:1.5}
+  .adm-ai-icon{color:#d99219;flex-shrink:0;margin-top:1px}
+  .adm-ai-empty{font-size:11px;color:#6b6860;margin:0;padding:12px 0}
+
+  /* ── Table ────────────────────────────────────────────────── */
+  .adm-table-card{overflow:hidden}
+  .adm-table-header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .adm-table-icon{width:36px;height:36px;display:grid;place-items:center;background:rgba(217,146,25,.10);color:#d99219;flex-shrink:0}
+  .adm-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .adm-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+  .adm-th{padding:9px 16px;text-align:left;font:600 9px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:#a6a29a;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.08)}
+  .adm-td{padding:10px 16px;color:#f0eee8;border-bottom:1px solid rgba(255,255,255,.05)}
+  .adm-td-bold{font-weight:600}
+  .adm-td-muted{color:#a6a29a}
+  .adm-td-num{text-align:right}
+  .adm-td-target{color:#6b6860}
+  .adm-td-empty{padding:32px 16px;text-align:center;color:#a6a29a}
+  .adm-td-action{text-align:center}
+  .adm-tr:hover{background:rgba(255,255,255,.022)}
+  .adm-tr--warn{background:rgba(255,77,79,.04)}
+  .adm-eff-ok{display:inline-flex;align-items:center;gap:4px;color:#d99219;font-weight:600}
+  .adm-eff-bad{display:inline-flex;align-items:center;gap:4px;color:#ff4d4f;font-weight:600}
+  .adm-view-btn{width:32px;height:32px;display:inline-grid;place-items:center;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.03);color:#a6a29a;cursor:pointer;transition:.15s}
+  .adm-view-btn:hover{border-color:rgba(217,146,25,.5);color:#d99219}
+
+  /* ── Settings ─────────────────────────────────────────────── */
+  .adm-settings-card{overflow:hidden}
+  .adm-settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.07)}
+  @media(max-width:860px){.adm-settings-grid{grid-template-columns:1fr}}
+  .adm-settings-item{padding:18px;background:#171715}
+  .adm-settings-title{font:600 12px Manrope,sans-serif;color:#f0eee8;margin:0 0 3px}
+  .adm-settings-sub{font-size:11px;color:#a6a29a;margin:0 0 10px}
+  .adm-settings-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.05);font-size:11px}
+  .adm-settings-key{color:#a6a29a}
+  .adm-settings-val{color:#d99219;font-weight:600}
+
+  /* ── Detail view ──────────────────────────────────────────── */
+  .adm-detail{display:flex;flex-direction:column;gap:16px}
+  .adm-back-btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#e4ded4;font:600 10px Manrope,sans-serif;text-transform:uppercase;cursor:pointer;transition:.15s;align-self:flex-start}
+  .adm-back-btn:hover{border-color:rgba(217,146,25,.5);color:#d99219}
+  .adm-detail-grid{display:grid;grid-template-columns:1fr 340px;gap:12px}
+  @media(max-width:960px){.adm-detail-grid{grid-template-columns:1fr}}
+  .adm-detail-main{grid-column:1}
+  .adm-detail-side{grid-column:2;grid-row:1}
+  @media(max-width:960px){.adm-detail-side{grid-column:1;grid-row:auto}}
+  .adm-detail-half{grid-column:span 1}
+  .adm-detail-full{grid-column:1/-1}
+  .adm-insights-card{display:flex;flex-direction:column;height:100%}
+  .adm-insight-remark{margin:0 18px 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);font-size:11px;color:#a6a29a;line-height:1.6}
+  .adm-insight-list{padding:0 18px 16px;display:flex;flex-direction:column;gap:6px;flex:1;overflow-y:auto}
+  .adm-insight-item{display:flex;gap:8px;padding:7px 10px;background:rgba(255,255,255,.025);font-size:11px;color:#a6a29a;line-height:1.5}
+  .adm-insight-icon{color:#d99219;flex-shrink:0;margin-top:1px}
+  .adm-review-card{padding:0}
+  .adm-textarea{width:100%;padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);color:#f0eee8;font:500 12px Manrope,sans-serif;outline:none;resize:vertical;margin:12px 18px 0;width:calc(100% - 36px);box-sizing:border-box}
+  .adm-textarea:focus{border-color:rgba(217,146,25,.55)}
+  .adm-textarea::placeholder{color:#6b6860}
+  .adm-review-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 18px 18px}
+
+  @media(prefers-reduced-motion:reduce){.adm-kpi-card,.adm-btn-primary,.adm-btn-secondary,.adm-view-btn{transition:none!important}}
+`;

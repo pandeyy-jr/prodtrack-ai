@@ -15,8 +15,8 @@ const rowTotal = (row: ProductionMatrixRow) =>
 const axis = {
   axisLine: { show: false },
   axisTick: { show: false },
-  axisLabel: { color: '#64748B', fontSize: 10 },
-  splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } },
+  axisLabel: { color: '#A6A29A', fontSize: 10 },
+  splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
 };
 
 const MatrixAnalytics = ({ rows, shift, timeSlots }: MatrixAnalyticsProps) => {
@@ -33,17 +33,17 @@ const MatrixAnalytics = ({ rows, shift, timeSlots }: MatrixAnalyticsProps) => {
   );
 
   const metrics = [
-    { label: 'Total Output', value: totalProduction.toLocaleString(), icon: Factory, tone: '#00E676' },
-    { label: 'Active', value: `${activeRows.length}/${rows.length}`, icon: Activity, tone: '#00FFC8' },
-    { label: 'Progress', value: `${shiftProgress.toFixed(0)}%`, icon: Clock3, tone: '#94A3B8' },
+    { label: 'Total Output', value: totalProduction.toLocaleString(), icon: Factory, tone: '#D99219' },
+    { label: 'Active', value: `${activeRows.length}/${rows.length}`, icon: Activity, tone: '#D99219' },
+    { label: 'Progress', value: `${shiftProgress.toFixed(0)}%`, icon: Clock3, tone: '#A6A29A' },
     { label: 'Efficiency', value: `${efficiency.toFixed(1)}%`, icon: Zap, tone: '#F59E0B' },
-    { label: 'Top Machine', value: rankedRows[0]?.machineNo ?? '-', icon: TrendingUp, tone: '#00E676' },
+    { label: 'Top Machine', value: rankedRows[0]?.machineNo ?? '-', icon: TrendingUp, tone: '#D99219' },
     { label: 'Lowest', value: rankedRows.at(-1)?.machineNo ?? '-', icon: TrendingDown, tone: '#FF6B6D' },
   ];
 
   const machineOption = {
     animationDuration: 500,
-    tooltip: { trigger: 'axis', backgroundColor: '#11242D', borderWidth: 0, textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#171715', borderWidth: 0, textStyle: { color: '#F0EEE8' } },
     grid: { left: 10, right: 8, top: 12, bottom: 4, containLabel: true },
     xAxis: { ...axis, type: 'category', data: rows.map((row) => row.machineNo) },
     yAxis: { ...axis, type: 'value' },
@@ -51,13 +51,13 @@ const MatrixAnalytics = ({ rows, shift, timeSlots }: MatrixAnalyticsProps) => {
       type: 'bar',
       data: rows.map(rowTotal),
       barMaxWidth: 18,
-      itemStyle: { color: '#00E676', borderRadius: [5, 5, 0, 0] },
+      itemStyle: { color: '#D99219', borderRadius: [2, 2, 0, 0] },
     }],
   };
 
   const trendOption = {
     animationDuration: 500,
-    tooltip: { trigger: 'axis', backgroundColor: '#11242D', borderWidth: 0, textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#171715', borderWidth: 0, textStyle: { color: '#F0EEE8' } },
     grid: { left: 10, right: 8, top: 12, bottom: 4, containLabel: true },
     xAxis: { ...axis, type: 'category', data: shift === 'C' ? ['Total'] : Array.from(timeSlots), boundaryGap: false },
     yAxis: { ...axis, type: 'value' },
@@ -66,8 +66,8 @@ const MatrixAnalytics = ({ rows, shift, timeSlots }: MatrixAnalyticsProps) => {
       smooth: true,
       showSymbol: false,
       data: shift === 'C' ? [totalProduction] : hourlyTotals,
-      lineStyle: { color: '#00FFC8', width: 2 },
-      areaStyle: { color: 'rgba(0,255,200,0.09)' },
+      lineStyle: { color: '#D99219', width: 2 },
+      areaStyle: { color: 'rgba(217,146,25,0.09)' },
     }],
   };
 
@@ -77,17 +77,17 @@ const MatrixAnalytics = ({ rows, shift, timeSlots }: MatrixAnalyticsProps) => {
         {metrics.map(({ label, value, icon: Icon, tone }) => (
           <Card key={label} className="p-4">
             <Icon size={16} style={{ color: tone }} />
-            <p className="mt-4 text-[10px] font-medium uppercase text-[#64748B]">{label}</p>
-            <p className="mt-1 text-lg font-semibold">{value}</p>
+            <p className="mt-4 text-[10px] font-medium uppercase text-[#A6A29A]">{label}</p>
+            <p className="mt-1 text-lg font-semibold text-[#F0EEE8]">{value}</p>
           </Card>
         ))}
       </div>
       <Card className="p-4">
-        <p className="text-sm font-semibold">Machine Output</p>
+        <p className="text-sm font-semibold text-[#F0EEE8] uppercase tracking-wide">Machine Output</p>
         <ReactECharts option={machineOption} style={{ height: 210 }} opts={{ renderer: 'svg' }} />
       </Card>
       <Card className="p-4">
-        <p className="text-sm font-semibold">{shift === 'C' ? 'Shift Performance' : 'Hourly Trend'}</p>
+        <p className="text-sm font-semibold text-[#F0EEE8] uppercase tracking-wide">{shift === 'C' ? 'Shift Performance' : 'Hourly Trend'}</p>
         <ReactECharts option={trendOption} style={{ height: 190 }} opts={{ renderer: 'svg' }} />
       </Card>
     </aside>

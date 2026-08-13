@@ -7,28 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        'base': '#081217',
-        'surface': '#0D1B22',
-        'primary': '#00E676',
-        'accent': '#00FFC8',
+        'base': '#10100F',
+        'surface': '#171715',
+        'primary': '#D99219',
+        'accent': '#F0AE35',
         'warning': '#F59E0B',
         'danger': '#FF4D4F',
-        'text-primary': '#FFFFFF',
-        'text-secondary': '#94A3B8',
+        'text-primary': '#F0EEE8',
+        'text-secondary': '#A6A29A',
       },
       backgroundColor: {
-        'glass': 'rgba(255,255,255,0.04)',
-        'card': 'rgba(255,255,255,0.04)',
-        'hover': 'rgba(255,255,255,0.08)',
+        'glass': 'rgba(255,255,255,0.035)',
+        'card': '#171715',
+        'hover': 'rgba(255,255,255,0.06)',
       },
       borderColor: {
-        'glass': 'rgba(255,255,255,0.08)',
+        'glass': 'rgba(255,255,255,0.10)',
       },
       borderRadius: {
-        'DEFAULT': '18px',
-        'lg': '18px',
-        'md': '14px',
-        'sm': '10px',
+        'DEFAULT': '0px',
+        'lg': '0px',
+        'md': '0px',
+        'sm': '0px',
       },
       spacing: {
         'safe': '32px',
@@ -38,11 +38,11 @@ export default {
         'container': '1440px',
       },
       boxShadow: {
-        'glass': '0 10px 30px rgba(0,0,0,0.3)',
+        'glass': '0 14px 36px rgba(0,0,0,0.18)',
         'glass-lg': '0 35px 100px rgba(0,0,0,0.42)',
-        'lift': '0 8px 32px rgba(0,0,0,0.2)',
-        'glow': '0 10px 28px rgba(0,230,118,0.16)',
-        'glow-accent': '0 10px 28px rgba(0,255,200,0.16)',
+        'lift': '0 8px 32px rgba(0,0,0,0.22)',
+        'glow': '0 10px 28px rgba(217,146,25,0.16)',
+        'glow-accent': '0 10px 28px rgba(240,174,53,0.14)',
       },
       backdropBlur: {
         'glass': '12px',

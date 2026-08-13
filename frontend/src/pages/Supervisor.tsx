@@ -1,91 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import {
-  AlertTriangle,
-  CalendarDays,
-  Download,
-  FileSpreadsheet,
-  Gauge,
-  Save,
-  Upload,
-  XCircle,
-  CheckCircle,
-  Settings,
+  AlertTriangle, CalendarDays, CheckCircle, Download,
+  FileSpreadsheet, Gauge, Save, Upload, XCircle,
 } from 'lucide-react';
+import AppShell from '../components/layout/AppShell';
 import MatrixAnalytics from '../components/MatrixAnalytics';
 import ProductionMatrix from '../components/ProductionMatrix';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
 import { SHIFT_TIME_SLOTS } from '../lib/productionMetrics';
 import { fetchMachines, submitBulkShifts } from '../lib/productionApi';
 import {
-  downloadImportTemplate,
-  importedRowToPayload,
-  parseProductionFile,
+  downloadImportTemplate, importedRowToPayload, parseProductionFile,
 } from '../lib/spreadsheetImport';
 import type {
-  ImportedProductionRow,
-  MachineMaster,
-  ProductionMatrixRow,
-  ShiftKey,
-  ShiftSubmissionPayload,
+  ImportedProductionRow, MachineMaster, ProductionMatrixRow,
+  ShiftKey, ShiftSubmissionPayload,
 } from '../types/production';
 
 const today = new Date().toISOString().slice(0, 10);
 const draftKey = (date: string, shift: ShiftKey) => `prodtrack_matrix_${date}_${shift}`;
-
-const valuesForShift = (shift: ShiftKey) =>
-  Array.from({ length: shift === 'C' ? 1 : 8 }, () => '');
-
+const valuesForShift = (shift: ShiftKey) => Array.from({ length: shift === 'C' ? 1 : 8 }, () => '');
 const createRows = (machines: MachineMaster[], shift: ShiftKey): ProductionMatrixRow[] =>
-  machines.map((machine) => ({
-    machineNo: machine.machine_no,
-    productCode: machine.product_code,
-    targetPieces: machine.target_per_shift,
-    values: valuesForShift(shift),
-  }));
-
-const rowIsComplete = (row: ProductionMatrixRow) =>
-  row.values.length > 0 && row.values.every((value) => value.trim() !== '');
-
-const matrixRowToPayload = (
-  row: ProductionMatrixRow,
-  date: string,
-  shift: ShiftKey,
-): ShiftSubmissionPayload => ({
-  date,
-  shift,
-  machine_no: row.machineNo,
-  toy_code: row.productCode,
-  target_pieces: row.targetPieces,
-  entries:
-    shift === 'C'
-      ? [{ time_slot: 'Shift Total', pieces: Number(row.values[0]) || 0 }]
-      : SHIFT_TIME_SLOTS[shift].map((timeSlot, index) => ({
-          time_slot: timeSlot,
-          pieces: Number(row.values[index]) || 0,
-        })),
+  machines.map((m) => ({ machineNo: m.machine_no, productCode: m.product_code, targetPieces: m.target_per_shift, values: valuesForShift(shift) }));
+const rowIsComplete = (row: ProductionMatrixRow) => row.values.length > 0 && row.values.every((v) => v.trim() !== '');
+const matrixRowToPayload = (row: ProductionMatrixRow, date: string, shift: ShiftKey): ShiftSubmissionPayload => ({
+  date, shift, machine_no: row.machineNo, toy_code: row.productCode, target_pieces: row.targetPieces,
+  entries: shift === 'C'
+    ? [{ time_slot: 'Shift Total', pieces: Number(row.values[0]) || 0 }]
+    : SHIFT_TIME_SLOTS[shift].map((ts, i) => ({ time_slot: ts, pieces: Number(row.values[i]) || 0 })),
 });
 
 const Supervisor = () => {
   const [mode, setMode] = useState<'matrix' | 'upload'>('matrix');
   const [date, setDate] = useState(today);
   const [shift, setShift] = useState<ShiftKey>('A');
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.slice(1);
-      const timer = setTimeout(() => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [location]);
   const [machines, setMachines] = useState<MachineMaster[]>([]);
   const [rows, setRows] = useState<ProductionMatrixRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,145 +45,81 @@ const Supervisor = () => {
   const timeSlots = SHIFT_TIME_SLOTS[shift];
 
   const loadMachines = async () => {
-    setLoading(true);
-    setLoadError(false);
-    setMessage('');
-    setSaveState('draft');
+    setLoading(true); setLoadError(false); setMessage(''); setSaveState('draft');
     try {
-      const data = await fetchMachines();
-      setMachines(data);
+      setMachines(await fetchMachines());
       setLoading(false);
-      setLoadError(false);
-      setMessage('');
     } catch {
-      setMachines([]);
-      setLoading(false);
-      setLoadError(true);
-      setMessage('Unable to connect to FastAPI service.');
-      setSaveState('error');
+      setMachines([]); setLoading(false); setLoadError(true);
+      setMessage('Unable to connect to backend.'); setSaveState('error');
     }
   };
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadMachines();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+  useEffect(() => { const t = window.setTimeout(() => { void loadMachines(); }, 0); return () => window.clearTimeout(t); }, []);
 
   useEffect(() => {
     if (!machines.length) return;
-    const timer = window.setTimeout(() => {
+    const t = window.setTimeout(() => {
       const stored = localStorage.getItem(draftKey(date, shift));
       if (stored) {
         try {
           const draft = JSON.parse(stored) as ProductionMatrixRow[];
-          const byMachine = new Map(draft.map((row) => [row.machineNo, row]));
-          setRows(
-            createRows(machines, shift).map((row) => {
-              const saved = byMachine.get(row.machineNo);
-              return saved?.values.length === row.values.length ? { ...row, values: saved.values } : row;
-            }),
-          );
-          setSaveState('draft');
-          setMessage('Autosaved draft restored.');
+          const byMachine = new Map(draft.map((r) => [r.machineNo, r]));
+          setRows(createRows(machines, shift).map((r) => { const s = byMachine.get(r.machineNo); return s?.values.length === r.values.length ? { ...r, values: s.values } : r; }));
+          setSaveState('draft'); setMessage('Draft restored.');
           return;
-        } catch {
-          localStorage.removeItem(draftKey(date, shift));
-        }
+        } catch { localStorage.removeItem(draftKey(date, shift)); }
       }
-      setRows(createRows(machines, shift));
-      setSaveState('draft');
-      setMessage('');
+      setRows(createRows(machines, shift)); setSaveState('draft'); setMessage('');
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(t);
   }, [date, machines, shift]);
 
   useEffect(() => {
     if (!rows.length) return;
-    const timer = window.setTimeout(() => {
-      localStorage.setItem(draftKey(date, shift), JSON.stringify(rows));
-      setSaveState('draft');
-    }, 400);
-    return () => window.clearTimeout(timer);
+    const t = window.setTimeout(() => { localStorage.setItem(draftKey(date, shift), JSON.stringify(rows)); setSaveState('draft'); }, 400);
+    return () => window.clearTimeout(t);
   }, [date, rows, shift]);
 
   const completedRows = useMemo(() => rows.filter(rowIsComplete), [rows]);
-  const startedRows = useMemo(
-    () => rows.filter((row) => row.values.some((value) => value !== '')),
-    [rows],
-  );
+  const startedRows = useMemo(() => rows.filter((r) => r.values.some((v) => v !== '')), [rows]);
   const incompleteStartedRows = startedRows.length - completedRows.length;
   const validationErrors = useMemo(() => {
     const errors: Record<string, string> = {};
-    rows.forEach((row, rowIndex) => {
-      row.values.forEach((value, columnIndex) => {
-        const key = `${rowIndex}:${columnIndex}`;
-        const trimmed = value.trim();
-        if (!trimmed) {
-          errors[key] = 'Required';
-          return;
-        }
-        if (!/^\d+$/.test(trimmed)) {
-          errors[key] = 'Invalid number';
-          return;
-        }
-        if (Number(trimmed) < 0) {
-          errors[key] = 'Negative not allowed';
-        }
-      });
-    });
+    rows.forEach((row, ri) => row.values.forEach((v, ci) => {
+      const key = `${ri}:${ci}`; const t = v.trim();
+      if (!t) { errors[key] = 'Required'; return; }
+      if (!/^\d+$/.test(t)) { errors[key] = 'Invalid'; return; }
+      if (Number(t) < 0) errors[key] = 'Negative';
+    }));
     return errors;
   }, [rows]);
   const validationErrorCount = Object.keys(validationErrors).length;
   const readyToSubmit = completedRows.length > 0 && incompleteStartedRows === 0 && validationErrorCount === 0;
 
   const handleSubmit = async () => {
-    if (!readyToSubmit) {
-      setSaveState('error');
-      setMessage('Fix validation issues before submitting.');
-      return;
-    }
-    setSaveState('saving');
-    setMessage('');
+    if (!readyToSubmit) { setSaveState('error'); setMessage('Fix validation issues before submitting.'); return; }
+    setSaveState('saving'); setMessage('');
     try {
-      const result = await submitBulkShifts(
-        completedRows.map((row) => matrixRowToPayload(row, date, shift)),
-      );
+      const result = await submitBulkShifts(completedRows.map((r) => matrixRowToPayload(r, date, shift)));
       localStorage.removeItem(draftKey(date, shift));
-      setSaveState('saved');
-      setMessage(`${result.saved_count} machine reports submitted successfully.`);
+      setSaveState('saved'); setMessage(`${result.saved_count} reports submitted.`);
       setRows(createRows(machines, shift));
-    } catch (error) {
-      setSaveState('error');
-      setMessage(error instanceof Error ? error.message : 'Matrix submission failed.');
-    }
+    } catch (err) { setSaveState('error'); setMessage(err instanceof Error ? err.message : 'Submission failed.'); }
   };
 
   const handleValidate = () => {
-    if (validationErrorCount > 0) {
-      setSaveState('error');
-      setMessage(`${validationErrorCount} validation issue(s) found. Review highlighted cells.`);
-      return;
-    }
-    setSaveState('draft');
-    setMessage(`${completedRows.length} completed machine row(s) are ready to submit.`);
+    if (validationErrorCount > 0) { setSaveState('error'); setMessage(`${validationErrorCount} issue(s) found.`); return; }
+    setSaveState('draft'); setMessage(`${completedRows.length} row(s) ready to submit.`);
   };
 
   const handleFile = async (file: File) => {
-    setFileName(file.name);
-    setMessage('');
-    try {
-      setImportRows(await parseProductionFile(file));
-      setSaveState('draft');
-    } catch {
-      setImportRows([]);
-      setSaveState('error');
-      setMessage('The spreadsheet could not be read. Use the provided template.');
-    }
+    setFileName(file.name); setMessage('');
+    try { setImportRows(await parseProductionFile(file)); setSaveState('draft'); }
+    catch { setImportRows([]); setSaveState('error'); setMessage('Could not read file. Use the template.'); }
   };
 
-  const validImportRows = importRows.filter((row) => row.errors.length === 0);
+  const validImportRows = importRows.filter((r) => r.errors.length === 0);
   const invalidImportRows = importRows.length - validImportRows.length;
 
   const handleImport = async () => {
@@ -244,387 +127,401 @@ const Supervisor = () => {
     setSaveState('saving');
     try {
       const result = await submitBulkShifts(validImportRows.map(importedRowToPayload));
-      setSaveState('saved');
-      setMessage(result.message);
-      setImportRows([]);
-      setFileName('');
-    } catch (error) {
-      setSaveState('error');
-      setMessage(error instanceof Error ? error.message : 'Spreadsheet import failed.');
+      setSaveState('saved'); setMessage(result.message); setImportRows([]); setFileName('');
+    } catch (err) { setSaveState('error'); setMessage(err instanceof Error ? err.message : 'Import failed.'); }
+  };
+
+  const isErr = saveState === 'error';
+  const isOk  = saveState === 'saved';
+
+  const handleNavClick = (id: string) => {
+    if (id === 'matrix') setMode('matrix');
+    else if (id === 'upload') setMode('upload');
+    else {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  const statusColor = saveState === 'error' ? 'bg-danger/15 text-danger' : 'bg-primary/15 text-primary';
-  const statusIcon = saveState === 'error' ? AlertTriangle : saveState === 'saved' ? CheckCircle : Gauge;
-  const StatusIcon = statusIcon;
-
   return (
-    <DashboardLayout
+    <AppShell
       title="Production Entry"
-      subtitle="Live Shift Matrix"
+      subtitle="Supervisor · Live Shift Matrix"
       status={saveState === 'saving' ? 'Saving' : saveState === 'error' ? 'Attention' : 'Online'}
+      onNavClick={handleNavClick}
+      activeNav={mode}
     >
-      {/* Header Controls */}
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Mode Tabs */}
-        <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.035] p-1.5">
+      <style>{supervisorStyles}</style>
+
+      {/* ── Page header ──────────────────────────────────────── */}
+      <div className="sv-page-header">
+        <div className="sv-header-left">
+          <p className="sv-eyebrow">SUPERVISOR / SHIFT ENTRY</p>
+          <h2 className="sv-page-title">Production Entry</h2>
+          <p className="sv-page-sub">
+            {loading ? 'Loading machine master…' : loadError ? 'Backend unavailable' : `${machines.length} machines connected · drafts auto-save`}
+          </p>
+        </div>
+
+        {/* Status chips */}
+        <div className="sv-status-row">
+          <span className={`sv-chip ${isErr ? 'sv-chip--err' : isOk ? 'sv-chip--ok' : 'sv-chip--draft'}`}>
+            {isErr ? <AlertTriangle size={12} /> : isOk ? <CheckCircle size={12} /> : <Gauge size={12} />}
+            {saveState === 'error' ? 'Error' : saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Draft'}
+          </span>
+          <span className="sv-chip sv-chip--neutral">{completedRows.length} / {rows.length} ready</span>
+          {incompleteStartedRows > 0 && (
+            <span className="sv-chip sv-chip--warn"><AlertTriangle size={12} />{incompleteStartedRows} incomplete</span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Mode tabs + toolbar ───────────────────────────────── */}
+      <div className="sv-toolbar">
+        <div className="sv-tabs">
           {(['matrix', 'upload'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setMode(tab)}
-              className={`h-10 px-4 rounded-lg text-sm font-semibold transition-all ${
-                mode === tab
-                  ? 'bg-white/[0.08] text-text-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+              className={`sv-tab ${mode === tab ? 'sv-tab--active' : ''}`}
+              aria-pressed={mode === tab}
             >
               {tab === 'matrix' ? 'Production Matrix' : 'File Import'}
             </button>
           ))}
         </div>
+
+        {mode === 'matrix' && (
+          <div className="sv-controls">
+            <label className="sv-control-field" aria-label="Select date">
+              <CalendarDays size={14} />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="sv-bare-input"
+              />
+            </label>
+            <label className="sv-control-field" aria-label="Select shift">
+              <Gauge size={14} />
+              <select value={shift} onChange={(e) => setShift(e.target.value as ShiftKey)} className="sv-bare-input">
+                <option value="A">Shift A (1–8)</option>
+                <option value="B">Shift B (9–16)</option>
+                <option value="C">Shift C (Total)</option>
+              </select>
+            </label>
+            <button className="sv-btn-secondary" onClick={handleValidate} disabled={!rows.length}>
+              Validate
+            </button>
+            <button
+              className="sv-btn-primary"
+              onClick={handleSubmit}
+              disabled={!readyToSubmit || saveState === 'saving'}
+            >
+              <Save size={14} />
+              {saveState === 'saving' ? 'Submitting…' : 'Submit'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Matrix Mode */}
-      {mode === 'matrix' ? (
+      {/* ── Alert banner ─────────────────────────────────────── */}
+      {message && (
+        <div className={`sv-alert ${isErr ? 'sv-alert--err' : isOk ? 'sv-alert--ok' : 'sv-alert--info'}`}>
+          {isErr ? <AlertTriangle size={15} /> : isOk ? <CheckCircle size={15} /> : <Gauge size={15} />}
+          {message}
+        </div>
+      )}
+
+      {/* ── MATRIX MODE ──────────────────────────────────────── */}
+      {mode === 'matrix' && (
         loading || loadError ? (
-          <div className="flex min-h-[480px] items-center justify-center">
-            <Card variant="default" className="w-full max-w-xl border border-white/[0.08] p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Gauge size={24} />
-              </div>
-              <h2 className="mt-6 text-xl font-semibold text-text-primary">
-                {loadError ? 'Unable to connect to FastAPI service.' : 'Loading machine master...'}
-              </h2>
-              <p className="mt-3 text-sm text-text-secondary">
-                {loadError
-                  ? 'The production API is unavailable. Verify the backend service and retry.'
-                  : 'Connecting to production database...'}
-              </p>
-              {loadError && (
-                <Button className="mt-6" onClick={() => void loadMachines()}>
-                  Retry
-                </Button>
-              )}
-            </Card>
+          <div className="sv-empty-state">
+            <div className="sv-empty-icon"><Gauge size={28} /></div>
+            <p className="sv-empty-title">{loadError ? 'Cannot reach backend' : 'Loading machine master…'}</p>
+            <p className="sv-empty-sub">{loadError ? 'Verify FastAPI is running on port 8001, then retry.' : 'Connecting to production database…'}</p>
+            {loadError && <button className="sv-btn-primary" style={{ marginTop: 16 }} onClick={() => void loadMachines()}>Retry</button>}
           </div>
         ) : (
-        <div className="grid grid-cols-12 gap-6 pb-32">
-          {/* Main Matrix Area */}
-          <div className="col-span-12 lg:col-span-9">
-            <Card variant="default" className="overflow-hidden">
-              {/* Card Header */}
-              <div className="border-b border-white/[0.08] px-6 py-5">
-                <div className="flex items-start justify-between">
+          <div className="sv-matrix-layout">
+            {/* Main matrix card */}
+            <div className="sv-matrix-main">
+              <div className="sv-card">
+                <div className="sv-card-header">
                   <div>
-                    <h2 className="text-lg font-semibold text-text-primary">
-                      {shift === 'C' ? 'All Machines - Direct Totals' : 'All Machines - Hourly Entry'}
-                    </h2>
-                    <p className="mt-2 text-sm text-text-secondary">
-                      {loading
-                        ? 'Loading machine master...'
-                        : `${machines.length} connected machines • Drafts auto-save`}
+                    <p className="sv-card-label">
+                      {shift === 'C' ? 'DIRECT TOTALS' : 'HOURLY ENTRY'} · SHIFT {shift}
                     </p>
+                    <h3 className="sv-card-title">All Machines</h3>
                   </div>
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${statusColor}`}>
-                    <StatusIcon size={18} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Toolbar */}
-              <div className="mx-6 mt-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="control flex h-11 items-center gap-2 rounded-lg px-4">
-                      <CalendarDays size={17} className="text-accent flex-shrink-0" />
-                      <input
-                        type="date"
-                        value={date}
-                        onChange={(event) => setDate(event.target.value)}
-                        className="bg-transparent text-sm outline-none focus:outline-none"
-                      />
-                    </label>
-                    <label className="control flex h-11 items-center gap-2 rounded-lg px-4">
-                      <Gauge size={17} className="text-primary flex-shrink-0" />
-                      <select
-                        value={shift}
-                        onChange={(event) => setShift(event.target.value as ShiftKey)}
-                        className="bg-transparent text-sm outline-none focus:outline-none"
-                      >
-                        <option value="A">Shift A (1-8)</option>
-                        <option value="B">Shift B (9-16)</option>
-                        <option value="C">Shift C (Total)</option>
-                      </select>
-                    </label>
-                    <div className={`flex h-11 items-center gap-2 rounded-lg px-3 ${statusColor}`}>
-                      <StatusIcon size={16} />
-                      <div className="leading-tight">
-                        <p className="text-sm font-semibold">{saveState === 'error' ? 'Attention' : saveState === 'saved' ? 'Ready' : 'Draft'}</p>
-                        <p className="text-xs opacity-80">{completedRows.length} ready</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <Button variant="secondary" onClick={handleValidate}>
-                      Validate
-                    </Button>
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={!readyToSubmit || saveState === 'saving'}
-                    >
-                      <Save size={16} />
-                      {saveState === 'saving' ? 'Submitting...' : 'Submit'}
-                    </Button>
+                  <div className={`sv-save-indicator ${isErr ? 'sv-save-indicator--err' : isOk ? 'sv-save-indicator--ok' : ''}`}>
+                    {isOk ? <CheckCircle size={15} /> : isErr ? <AlertTriangle size={15} /> : <Gauge size={15} />}
                   </div>
                 </div>
-              </div>
 
-              {/* Alerts */}
-              {message && (
-                <div className={`mx-6 mt-5 rounded-lg px-4 py-3 text-sm ${
-                  saveState === 'error'
-                    ? 'bg-danger/10 text-danger'
-                    : saveState === 'saved'
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-warning/10 text-warning'
-                }`}>
-                  {message}
-                </div>
-              )}
-              {incompleteStartedRows > 0 && (
-                <div className="mx-6 mt-4 rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning flex items-center gap-2">
-                  <AlertTriangle size={16} />
-                  Complete all cells for {incompleteStartedRows} started machine row(s)
-                </div>
-              )}
-
-              {/* Production Matrix */}
-              <div className="overflow-x-auto">
-                <ProductionMatrix
-                  rows={rows}
-                  shift={shift}
-                  timeSlots={timeSlots}
-                  validationErrors={validationErrors}
-                  onChange={setRows}
-                />
-              </div>
-
-              {/* Keyboard Shortcuts */}
-              <div className="border-t border-white/[0.08] bg-white/[0.02] px-6 py-3 text-xs text-text-secondary space-y-1">
-                <div>⬆️ ⬇️ ⬅️ ➡️ Navigate • Tab or Enter: Next field • Ctrl+D: Fill down • Paste: Bulk paste</div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Analytics Sidebar */}
-          <div className="col-span-12 lg:col-span-3">
-            <MatrixAnalytics rows={rows} shift={shift} timeSlots={timeSlots} />
-          </div>
-
-        </div>
-        )
-      ) : (
-        // Upload Mode
-        <div className="grid grid-cols-12 gap-6">
-          {/* Upload Card */}
-          <div className="col-span-12">
-            <Card variant="default" className="p-8">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                      <FileSpreadsheet size={24} />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold">CSV / Excel Import</h2>
-                      <p className="mt-1 text-sm text-text-secondary">
-                        Upload and validate production sheets before submission.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-shrink-0 gap-3">
-                  <Button variant="secondary" onClick={() => void downloadImportTemplate()}>
-                    <Download size={16} /> Template
-                  </Button>
-                  <Button onClick={() => fileInputRef.current?.click()}>
-                    <Upload size={16} /> Choose File
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.csv"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void handleFile(file);
-                    }}
+                <div className="sv-matrix-scroll">
+                  <ProductionMatrix
+                    rows={rows}
+                    shift={shift}
+                    timeSlots={timeSlots}
+                    validationErrors={validationErrors}
+                    onChange={setRows}
                   />
                 </div>
-              </div>
-              {fileName && (
-                <div className="mt-6 flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-3 text-sm text-primary">
-                  <CheckCircle size={18} />
-                  {fileName}
+
+                <div className="sv-matrix-footer">
+                  ↑↓←→ Navigate · Tab / Enter: Next · Ctrl+D: Fill down · Paste: Bulk paste
                 </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Import Stats */}
-          <div className="col-span-12 sm:col-span-4">
-            <Card variant="minimal" className="p-6">
-              <p className="text-xs font-semibold uppercase text-text-secondary">Total Rows</p>
-              <p className="mt-3 text-3xl font-bold">{importRows.length}</p>
-            </Card>
-          </div>
-          <div className="col-span-12 sm:col-span-4">
-            <Card variant="minimal" className="p-6">
-              <p className="text-xs font-semibold uppercase text-primary">Valid Rows</p>
-              <p className="mt-3 text-3xl font-bold text-primary">{validImportRows.length}</p>
-            </Card>
-          </div>
-          <div className="col-span-12 sm:col-span-4">
-            <Card variant="minimal" className={`p-6 ${invalidImportRows ? 'border-danger/30' : ''}`}>
-              <p className={`text-xs font-semibold uppercase ${invalidImportRows ? 'text-danger' : 'text-text-secondary'}`}>
-                Needs Fixes
-              </p>
-              <p className={`mt-3 text-3xl font-bold ${invalidImportRows ? 'text-danger' : 'text-text-primary'}`}>
-                {invalidImportRows}
-              </p>
-            </Card>
-          </div>
-
-          {/* Import Table */}
-          <div className="col-span-12">
-            <Card variant="default" className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/[0.08] bg-white/[0.02]">
-                      {['Row', 'Date', 'Shift', 'Machine', 'Product', 'Total', 'Target', 'Status'].map((label) => (
-                        <th key={label} className="px-6 py-3 text-left text-xs font-semibold uppercase text-text-secondary">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.08]">
-                    {importRows.map((row) => (
-                      <tr key={row.rowNumber} className={row.errors.length ? 'bg-danger/5' : ''}>
-                        <td className="px-6 py-4">{row.rowNumber}</td>
-                        <td className="px-6 py-4">{row.date || '—'}</td>
-                        <td className="px-6 py-4">{row.shift}</td>
-                        <td className="px-6 py-4 font-medium">{row.machineNo || '—'}</td>
-                        <td className="px-6 py-4">{row.toyCode || '—'}</td>
-                        <td className="px-6 py-4">{row.totalPieces.toLocaleString()}</td>
-                        <td className="px-6 py-4">{row.targetPieces.toLocaleString()}</td>
-                        <td className="px-6 py-4">
-                          {row.errors.length ? (
-                            <span className="text-danger flex items-center gap-1">
-                              <XCircle size={16} /> Error
-                            </span>
-                          ) : row.warnings.length ? (
-                            <span className="text-warning flex items-center gap-1">
-                              <AlertTriangle size={16} /> Warning
-                            </span>
-                          ) : (
-                            <span className="text-primary flex items-center gap-1">
-                              <CheckCircle size={16} /> Ready
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {!importRows.length && (
-                      <tr>
-                        <td colSpan={8} className="px-6 py-12 text-center text-text-secondary">
-                          Upload a file to begin validation
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
-            </Card>
+            </div>
+
+            {/* Analytics sidebar */}
+            <div className="sv-matrix-sidebar">
+              <MatrixAnalytics rows={rows} shift={shift} timeSlots={timeSlots} />
+            </div>
+          </div>
+        )
+      )}
+
+      {/* ── UPLOAD MODE ──────────────────────────────────────── */}
+      {mode === 'upload' && (
+        <div className="sv-upload-layout">
+          {/* Drop zone / file picker */}
+          <div className="sv-card sv-upload-card">
+            <div className="sv-upload-header">
+              <div className="sv-upload-icon"><FileSpreadsheet size={22} /></div>
+              <div>
+                <h3 className="sv-card-title">CSV / Excel Import</h3>
+                <p className="sv-card-sub">Upload and validate production sheets before submission.</p>
+              </div>
+              <div className="sv-upload-actions">
+                <button className="sv-btn-secondary" onClick={() => void downloadImportTemplate()}>
+                  <Download size={14} /> Template
+                </button>
+                <button className="sv-btn-primary" onClick={() => fileInputRef.current?.click()}>
+                  <Upload size={14} /> Choose File
+                </button>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.csv" className="sv-hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); }} />
+              </div>
+            </div>
+            {fileName && (
+              <div className="sv-alert sv-alert--ok" style={{ marginTop: 16 }}>
+                <CheckCircle size={15} /> {fileName}
+              </div>
+            )}
           </div>
 
-          {/* Import Action */}
-          <div className="col-span-12 flex flex-col gap-4 items-end">
+          {/* Stats */}
+          <div className="sv-import-stats">
+            {[
+              { label: 'Total Rows', value: importRows.length, tone: 'neutral' },
+              { label: 'Valid Rows', value: validImportRows.length, tone: 'ok' },
+              { label: 'Needs Fixes', value: invalidImportRows, tone: invalidImportRows ? 'err' : 'neutral' },
+            ].map(({ label, value, tone }) => (
+              <div key={label} className={`sv-stat-card sv-stat-card--${tone}`}>
+                <p className="sv-stat-label">{label}</p>
+                <p className="sv-stat-value">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Import table */}
+          <div className="sv-card sv-table-card">
+            <div className="sv-table-wrap">
+              <table className="sv-table">
+                <thead>
+                  <tr>
+                    {['Row', 'Date', 'Shift', 'Machine', 'Product', 'Total', 'Target', 'Status'].map((h) => (
+                      <th key={h} className="sv-th">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importRows.map((row) => (
+                    <tr key={row.rowNumber} className={row.errors.length ? 'sv-tr-err' : 'sv-tr'}>
+                      <td className="sv-td">{row.rowNumber}</td>
+                      <td className="sv-td">{row.date || '—'}</td>
+                      <td className="sv-td">{row.shift}</td>
+                      <td className="sv-td sv-td-bold">{row.machineNo || '—'}</td>
+                      <td className="sv-td">{row.toyCode || '—'}</td>
+                      <td className="sv-td sv-td-num">{row.totalPieces.toLocaleString()}</td>
+                      <td className="sv-td sv-td-num sv-td-muted">{row.targetPieces.toLocaleString()}</td>
+                      <td className="sv-td">
+                        {row.errors.length ? (
+                          <span className="sv-status-err"><XCircle size={13} /> Error</span>
+                        ) : row.warnings.length ? (
+                          <span className="sv-status-warn"><AlertTriangle size={13} /> Warning</span>
+                        ) : (
+                          <span className="sv-status-ok"><CheckCircle size={13} /> Ready</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!importRows.length && (
+                    <tr><td colSpan={8} className="sv-td-empty">Upload a file to begin validation</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Import action */}
+          <div className="sv-import-action">
             {message && (
-              <p className={`text-sm ${saveState === 'error' ? 'text-danger' : 'text-primary'}`}>
-                {message}
-              </p>
+              <p className={`sv-import-msg ${isErr ? 'sv-import-msg--err' : 'sv-import-msg--ok'}`}>{message}</p>
             )}
-            <Button
+            <button
+              className="sv-btn-primary"
               onClick={handleImport}
               disabled={!validImportRows.length || invalidImportRows > 0 || saveState === 'saving'}
             >
-              <Save size={16} />
-              {saveState === 'saving' ? 'Importing...' : `Import ${validImportRows.length} Reports`}
-            </Button>
+              <Save size={14} />
+              {saveState === 'saving' ? 'Importing…' : `Import ${validImportRows.length} Reports`}
+            </button>
           </div>
         </div>
       )}
 
-      {/* System Settings Card */}
-      <div id="settings" className="mt-8">
-        <Card variant="default" className="p-6">
-          <div className="flex items-center gap-3 border-b border-white/[0.08] pb-4 mb-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Settings size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">System Settings</h2>
-              <p className="mt-0.5 text-sm text-text-secondary">Supervisor local configuration and workspace status</p>
-            </div>
+      {/* ── Settings ─────────────────────────────────────────── */}
+      <div id="settings" className="sv-settings">
+        <div className="sv-card">
+          <div className="sv-card-header sv-card-header--border">
+            <p className="sv-card-label">SYSTEM</p>
+            <h3 className="sv-card-title">Settings</h3>
           </div>
-          
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-semibold text-text-primary">Autosave Drafts</p>
-              <p className="mt-1 text-xs text-text-secondary">Autosave interval and key schema</p>
-              <div className="mt-4 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Debounce Delay</span>
-                <span className="font-semibold text-primary">400ms</span>
+          <div className="sv-settings-grid">
+            {[
+              { title: 'Autosave Drafts', sub: 'Debounce interval and storage schema', rows: [['Debounce', '400 ms'], ['Key', 'prodtrack_matrix_[date]_[shift]']] },
+              { title: 'Spreadsheet Formats', sub: 'Accepted import file types', rows: [['Extensions', '.xlsx, .csv'], ['Outlier Limit', '>1,000,000 pcs']] },
+              { title: 'API Sync', sub: 'Connection parameters', rows: [['Endpoint', '127.0.0.1:8001'], ['Auth', 'Local Storage']] },
+            ].map(({ title, sub, rows }) => (
+              <div key={title} className="sv-settings-item">
+                <p className="sv-settings-title">{title}</p>
+                <p className="sv-settings-sub">{sub}</p>
+                {rows.map(([k, v]) => (
+                  <div key={k} className="sv-settings-row">
+                    <span className="sv-settings-key">{k}</span>
+                    <span className="sv-settings-val">{v}</span>
+                  </div>
+                ))}
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Storage Key</span>
-                <span className="font-semibold text-text-primary">prodtrack_matrix_[date]_[shift]</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-semibold text-text-primary">Spreadsheet Formats</p>
-              <p className="mt-1 text-xs text-text-secondary">Allowed templates for file imports</p>
-              <div className="mt-4 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Accepted Extensions</span>
-                <span className="font-semibold text-primary">.xlsx, .csv</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Outlier Detection</span>
-                <span className="font-semibold text-warning">{'Strict (>1,000,000 pcs)'}</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-semibold text-text-primary">API Sync Status</p>
-              <p className="mt-1 text-xs text-text-secondary">Local database connection parameters</p>
-              <div className="mt-4 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Service Endpoint</span>
-                <span className="font-semibold text-primary">http://127.0.0.1:8001</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-text-secondary">Authorization Mode</span>
-                <span className="font-semibold text-text-primary">Local Storage Auth</span>
-              </div>
-            </div>
+            ))}
           </div>
-        </Card>
+        </div>
       </div>
-    </DashboardLayout>
+    </AppShell>
   );
 };
+
+const supervisorStyles = `
+  .sv-page-header{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .sv-header-left{min-width:0}
+  .sv-eyebrow{font:500 9px 'DM Mono',monospace;letter-spacing:2px;color:#d99219;margin:0 0 6px;text-transform:uppercase}
+  .sv-page-title{font:700 26px 'Barlow Condensed',Impact,sans-serif;text-transform:uppercase;letter-spacing:.3px;color:#f0eee8;margin:0 0 4px}
+  .sv-page-sub{font-size:12px;color:#a6a29a;margin:0}
+  .sv-status-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:4px}
+  .sv-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font:600 10px 'DM Mono',monospace;letter-spacing:.5px;border:1px solid rgba(255,255,255,.10);background:#1c1b18}
+  .sv-chip--draft{color:#a6a29a}
+  .sv-chip--ok{color:#d99219;border-color:rgba(217,146,25,.35);background:rgba(217,146,25,.08)}
+  .sv-chip--err{color:#ff4d4f;border-color:rgba(255,77,79,.35);background:rgba(255,77,79,.08)}
+  .sv-chip--warn{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
+  .sv-chip--neutral{color:#a6a29a}
+
+  .sv-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+  .sv-tabs{display:flex;gap:2px;border:1px solid rgba(255,255,255,.10);background:#1c1b18;padding:3px}
+  .sv-tab{padding:7px 18px;border:0;background:transparent;color:#a6a29a;font:600 11px Manrope,sans-serif;cursor:pointer;transition:.15s;letter-spacing:.2px}
+  .sv-tab--active{background:rgba(217,146,25,.15);color:#d99219;border-left:2px solid #d99219}
+  .sv-tab:hover:not(.sv-tab--active){color:#f0eee8}
+  .sv-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .sv-control-field{display:inline-flex;align-items:center;gap:8px;padding:0 12px;height:38px;border:1px solid rgba(255,255,255,.10);background:#1c1b18;color:#a6a29a;cursor:pointer}
+  .sv-control-field:focus-within{border-color:rgba(217,146,25,.55)}
+  .sv-bare-input{border:0;background:transparent;color:#f0eee8;font:500 12px Manrope,sans-serif;outline:none;cursor:pointer}
+  .sv-bare-input option{background:#1c1b18}
+
+  .sv-btn-primary{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border:0;background:#d99219;color:#17130c;font:700 11px Manrope,sans-serif;letter-spacing:.3px;cursor:pointer;transition:.15s;text-transform:uppercase}
+  .sv-btn-primary:hover:not(:disabled){background:#f0ae35}
+  .sv-btn-primary:disabled{opacity:.38;cursor:not-allowed}
+  .sv-btn-secondary{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#e4ded4;font:600 11px Manrope,sans-serif;cursor:pointer;transition:.15s;text-transform:uppercase}
+  .sv-btn-secondary:hover:not(:disabled){border-color:rgba(217,146,25,.5);color:#d99219}
+  .sv-btn-secondary:disabled{opacity:.38;cursor:not-allowed}
+
+  .sv-alert{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:12px;margin-bottom:16px;border-left:2px solid}
+  .sv-alert--ok{background:rgba(217,146,25,.08);color:#d99219;border-color:#d99219}
+  .sv-alert--err{background:rgba(255,77,79,.08);color:#ff4d4f;border-color:#ff4d4f}
+  .sv-alert--info{background:rgba(245,158,11,.08);color:#f59e0b;border-color:#f59e0b}
+
+  .sv-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;text-align:center;padding:40px 20px}
+  .sv-empty-icon{width:56px;height:56px;display:grid;place-items:center;background:rgba(217,146,25,.10);color:#d99219;margin-bottom:16px}
+  .sv-empty-title{font:700 18px 'Barlow Condensed',sans-serif;color:#f0eee8;margin:0 0 8px;text-transform:uppercase}
+  .sv-empty-sub{font-size:12px;color:#a6a29a;max-width:340px;margin:0}
+
+  .sv-matrix-layout{display:grid;grid-template-columns:1fr 240px;gap:20px;align-items:start}
+  @media(max-width:1100px){.sv-matrix-layout{grid-template-columns:1fr}}
+  .sv-matrix-sidebar{display:flex;flex-direction:column;gap:0}
+  @media(max-width:1100px){.sv-matrix-sidebar{display:none}}
+
+  .sv-card{background:#171715;border:1px solid rgba(255,255,255,.10)}
+  .sv-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px}
+  .sv-card-header--border{border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:0}
+  .sv-card-label{font:500 9px 'DM Mono',monospace;letter-spacing:1.8px;color:#d99219;text-transform:uppercase;margin:0 0 4px}
+  .sv-card-title{font:700 16px 'Barlow Condensed',Impact,sans-serif;text-transform:uppercase;color:#f0eee8;margin:0}
+  .sv-card-sub{font-size:12px;color:#a6a29a;margin:4px 0 0}
+  .sv-save-indicator{width:32px;height:32px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.10);background:#1c1b18;color:#a6a29a;flex-shrink:0}
+  .sv-save-indicator--ok{color:#d99219;border-color:rgba(217,146,25,.35)}
+  .sv-save-indicator--err{color:#ff4d4f;border-color:rgba(255,77,79,.35)}
+  .sv-matrix-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sv-matrix-footer{padding:8px 20px;border-top:1px solid rgba(255,255,255,.06);font:500 10px 'DM Mono',monospace;color:#6b6860;letter-spacing:.3px}
+
+  .sv-upload-layout{display:flex;flex-direction:column;gap:16px}
+  .sv-upload-card{padding:20px}
+  .sv-upload-header{display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px}
+  .sv-upload-icon{width:44px;height:44px;display:grid;place-items:center;background:rgba(217,146,25,.10);color:#d99219;flex-shrink:0}
+  .sv-upload-actions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .sv-hidden{display:none}
+
+  .sv-import-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:600px){.sv-import-stats{grid-template-columns:1fr}}
+  .sv-stat-card{padding:16px 20px;background:#171715;border:1px solid rgba(255,255,255,.10)}
+  .sv-stat-card--ok{border-color:rgba(217,146,25,.25)}
+  .sv-stat-card--err{border-color:rgba(255,77,79,.25)}
+  .sv-stat-label{font:600 9px 'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:#a6a29a;margin:0 0 8px}
+  .sv-stat-value{font:700 28px 'Barlow Condensed',sans-serif;color:#f0eee8;margin:0}
+  .sv-stat-card--ok .sv-stat-label{color:#d99219}
+  .sv-stat-card--ok .sv-stat-value{color:#d99219}
+  .sv-stat-card--err .sv-stat-label,.sv-stat-card--err .sv-stat-value{color:#ff4d4f}
+
+  .sv-table-card{overflow:hidden}
+  .sv-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sv-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+  .sv-th{padding:10px 16px;text-align:left;font:600 9px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:#a6a29a;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.08)}
+  .sv-td{padding:10px 16px;color:#f0eee8;border-bottom:1px solid rgba(255,255,255,.06)}
+  .sv-td-bold{font-weight:600}
+  .sv-td-num{text-align:right}
+  .sv-td-muted{color:#a6a29a}
+  .sv-td-empty{padding:32px 16px;text-align:center;color:#a6a29a}
+  .sv-tr:hover{background:rgba(255,255,255,.025)}
+  .sv-tr-err{background:rgba(255,77,79,.04)}
+  .sv-status-ok{display:inline-flex;align-items:center;gap:5px;color:#d99219}
+  .sv-status-warn{display:inline-flex;align-items:center;gap:5px;color:#f59e0b}
+  .sv-status-err{display:inline-flex;align-items:center;gap:5px;color:#ff4d4f}
+
+  .sv-import-action{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap}
+  .sv-import-msg{font-size:12px;margin:0}
+  .sv-import-msg--ok{color:#d99219}
+  .sv-import-msg--err{color:#ff4d4f}
+
+  .sv-settings{margin-top:28px}
+  .sv-settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.08)}
+  @media(max-width:900px){.sv-settings-grid{grid-template-columns:1fr}}
+  .sv-settings-item{padding:18px 20px;background:#171715}
+  .sv-settings-title{font:600 12px Manrope,sans-serif;color:#f0eee8;margin:0 0 3px}
+  .sv-settings-sub{font-size:11px;color:#a6a29a;margin:0 0 12px}
+  .sv-settings-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.06);font-size:11px}
+  .sv-settings-key{color:#a6a29a}
+  .sv-settings-val{color:#d99219;font-weight:600;text-align:right}
+
+  @media(prefers-reduced-motion:reduce){.sv-tab,.sv-btn-primary,.sv-btn-secondary{transition:none!important}}
+`;
 
 export default Supervisor;

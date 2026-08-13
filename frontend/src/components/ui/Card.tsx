@@ -8,9 +8,9 @@ interface CardProps {
 }
 
 const variants = {
-  default: 'bg-glass border border-glass backdrop-blur-glass shadow-glass',
-  interactive: 'bg-glass border border-glass backdrop-blur-glass shadow-glass hover:bg-hover transition-all duration-250 hover:shadow-lift',
-  minimal: 'bg-transparent border border-glass/50 backdrop-blur-[6px]',
+  default: 'bg-[#171715] border border-white/[0.10] shadow-[0_14px_36px_rgba(0,0,0,0.16)]',
+  interactive: 'bg-[#171715] border border-white/[0.10] shadow-[0_14px_36px_rgba(0,0,0,0.16)] hover:border-[#D99219]/45 hover:bg-[#1C1B18] transition-all duration-250',
+  minimal: 'bg-transparent border border-white/[0.10]',
 };
 
 const Card = ({ children, className = '', variant = 'default', hover = false }: CardProps) => {
@@ -18,7 +18,7 @@ const Card = ({ children, className = '', variant = 'default', hover = false }: 
   const hoverClass = hover && variant === 'default' ? 'hover:bg-hover transition-all duration-250 hover:shadow-lift hover:border-glass' : '';
   
   return (
-    <section className={`rounded-lg ${variantClass} ${hoverClass} ${className}`}>
+    <section className={`rounded-none ${variantClass} ${hoverClass} ${className}`}>
       {children}
     </section>
   );

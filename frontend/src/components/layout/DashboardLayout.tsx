@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
-import { Factory } from 'lucide-react';
+import { Factory, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { Anomaly } from '../../lib/aiEngine';
 import NotificationBell from '../NotificationBell';
+import { logout } from '../../utils/auth';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,6 +20,7 @@ const DashboardLayout = ({
   status = 'System Online',
   anomalies = [],
 }: DashboardLayoutProps) => {
+  const navigate = useNavigate();
   const today = new Date().toLocaleDateString(undefined, {
     day: '2-digit',
     month: 'short',
@@ -34,12 +37,12 @@ const DashboardLayout = ({
   const cfg = statusConfig[status];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col bg-[#10100F] text-[#F0EEE8]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px)', backgroundSize: '42px 42px' }}>
       {/* ── Header ──────────────────────────────────────────── */}
       <header
         role="banner"
         className="sticky top-0 z-20 backdrop-blur-lg"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(5,9,13,0.85)' }}
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.10)', background: 'rgba(16,16,15,0.94)' }}
       >
         <div className="mx-auto max-w-container px-safe py-4 flex items-center justify-between gap-4">
 
@@ -47,15 +50,15 @@ const DashboardLayout = ({
           <div className="flex items-center gap-4">
             <div
               className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0"
-              style={{ background: 'rgba(0,198,193,0.10)', border: '1px solid rgba(0,198,193,0.18)' }}
+              style={{ background: 'rgba(217,146,25,0.10)', border: '1px solid rgba(217,146,25,0.30)' }}
             >
-              <Factory size={15} style={{ color: '#00C6C1' }} />
+              <Factory size={15} style={{ color: '#D99219' }} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: '#6B7A8D' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: '#A6A29A' }}>
                 {subtitle}
               </p>
-              <h1 className="text-[20px] font-bold leading-tight" style={{ color: '#F5F7FA' }}>
+              <h1 className="text-[20px] font-bold uppercase tracking-tight leading-tight" style={{ color: '#F0EEE8' }}>
                 {title}
               </h1>
             </div>
@@ -63,7 +66,7 @@ const DashboardLayout = ({
 
           {/* Right: date + status + notifications */}
           <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-[12px]" style={{ color: '#6B7A8D' }}>{today}</span>
+            <span className="hidden sm:block text-[12px]" style={{ color: '#A6A29A' }}>{today}</span>
             <span
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
               style={{
@@ -79,6 +82,7 @@ const DashboardLayout = ({
               {cfg.label}
             </span>
             <NotificationBell anomalies={anomalies} />
+            <button onClick={() => { logout(); navigate('/login'); }} className="hidden h-8 items-center gap-1.5 border border-white/[0.10] px-2.5 text-[10px] font-semibold uppercase tracking-wide text-[#A6A29A] transition hover:border-[#D99219]/60 hover:text-[#D99219] sm:inline-flex" title="Logout"><LogOut size={13} /> Exit</button>
           </div>
         </div>
       </header>

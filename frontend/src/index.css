@@ -7,30 +7,30 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* ── Core palette ─────────────────────────────────────────── */
-  --bg:             #05090D;
-  --surface:        #0A1018;
-  --surface-raised: #0D1520;
+  --bg:             #10100F;
+  --surface:        #171715;
+  --surface-raised: #1C1B18;
 
-  /* Primary accent: Copper Bronze */
-  --primary:        #D89054;
-  --primary-dim:    rgba(216, 144, 84, 0.12);
+  /* Primary accent: Amber Gold */
+  --primary:        #D99219;
+  --primary-dim:    rgba(217, 146, 25, 0.12);
 
-  /* Secondary accent: Industrial Teal */
-  --accent:         #00C6C1;
-  --accent-dim:     rgba(0, 198, 193, 0.12);
+  /* Secondary accent: Bright Amber */
+  --accent:         #F0AE35;
+  --accent-dim:     rgba(240, 174, 53, 0.12);
 
   /* Text hierarchy */
-  --text-primary:   #F5F7FA;
-  --text-secondary: #B5C0C9;
-  --text-muted:     #6B7A8D;
+  --text-primary:   #F0EEE8;
+  --text-secondary: #A6A29A;
+  --text-muted:     #6B6860;
 
   /* Semantic */
   --warning:        #F59E0B;
   --danger:         #FF4D4F;
 
   /* Structure */
-  --border:         rgba(255, 255, 255, 0.08);
-  --border-strong:  rgba(255, 255, 255, 0.14);
+  --border:         rgba(255, 255, 255, 0.10);
+  --border-strong:  rgba(255, 255, 255, 0.16);
 
   background: var(--bg);
   color: var(--text-primary);
@@ -51,9 +51,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse at 70% -10%, rgba(216, 144, 84, 0.05), transparent 40rem),
-    radial-gradient(ellipse at 10% 80%, rgba(0, 198, 193, 0.04), transparent 30rem),
-    linear-gradient(160deg, #05090D 0%, #060B10 56%, #070C12 100%);
+    radial-gradient(ellipse at 70% -10%, rgba(217, 146, 25, 0.04), transparent 40rem),
+    radial-gradient(ellipse at 10% 80%, rgba(217, 146, 25, 0.025), transparent 30rem),
+    linear-gradient(160deg, #10100F 0%, #111110 56%, #121210 100%);
   color: var(--text-primary);
 }
 
@@ -61,7 +61,7 @@ button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
 
 ::selection {
-  background: rgba(0, 198, 193, 0.22);
+  background: rgba(217, 146, 25, 0.22);
   color: var(--text-primary);
 }
 
@@ -102,8 +102,8 @@ button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
   .control:hover { background: rgba(255, 255, 255, 0.06); }
   .control:focus,
   .control:focus-within {
-    border-color: rgba(0, 198, 193, 0.45);
-    box-shadow: 0 0 0 3px rgba(0, 198, 193, 0.08);
+    border-color: rgba(217, 146, 25, 0.45);
+    box-shadow: 0 0 0 3px rgba(217, 146, 25, 0.08);
     outline: none;
   }
 
@@ -196,17 +196,17 @@ button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Feature card hover — teal accent, no lime */
+/* Feature card hover — gold accent */
 .feature-card:hover {
-  border-color: rgba(0, 198, 193, 0.22) !important;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,198,193,0.10);
+  border-color: rgba(217, 146, 25, 0.22) !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(217,146,25,0.10);
 }
 
 /* ── Dashboard preview mockup ───────────────────────────────── */
 .dash-preview-chrome {
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.10);
-  background: #080D14;
+  background: #171715;
   box-shadow:
     0 40px 80px rgba(0,0,0,0.6),
     0 0 0 1px rgba(255,255,255,0.06),
@@ -215,8 +215,8 @@ button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
 }
 .dash-preview-titlebar {
   height: 36px;
-  background: #0C1420;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: #1C1B18;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   display: flex;
   align-items: center;
   padding: 0 14px;

@@ -67,8 +67,8 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
   const iconMap: Record<Notification['type'], React.ReactNode> = {
     critical: <AlertTriangle size={14} className="text-danger flex-shrink-0" />,
     warning: <AlertTriangle size={14} className="flex-shrink-0" style={{ color: '#F59E0B' }} />,
-    info: <Info size={14} className="text-accent flex-shrink-0" />,
-    success: <CheckCircle size={14} className="text-primary flex-shrink-0" />,
+    info: <Info size={14} className="flex-shrink-0" style={{ color: '#D99219' }} />,
+    success: <CheckCircle size={14} className="flex-shrink-0" style={{ color: '#D99219' }} />,
   };
 
   return (
@@ -96,9 +96,8 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
         <div
           className="notif-dropdown absolute right-0 top-11 z-50 w-80 overflow-hidden"
           style={{
-            borderRadius: '16px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(10,16,24,0.96)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'rgba(18,18,16,0.97)',
             backdropFilter: 'blur(20px)',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           }}
@@ -106,12 +105,12 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
           {/* Header */}
           <div
             className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
           >
-            <p className="text-[13px] font-semibold" style={{ color: '#F5F7FA' }}>
+            <p className="text-[13px] font-semibold" style={{ color: '#F0EEE8' }}>
               Alerts
               {notifications.length > 0 && (
-                <span className="ml-2 text-[11px] font-normal" style={{ color: '#6B7A8D' }}>
+                <span className="ml-2 text-[11px] font-normal" style={{ color: '#A6A29A' }}>
                   {notifications.length} total
                 </span>
               )}
@@ -120,8 +119,8 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
               <button
                 type="button"
                 onClick={() => setNotifications([])}
-                className="text-[11px] transition-colors hover:text-white"
-                style={{ color: '#6B7A8D' }}
+                className="text-[11px] transition-colors hover:text-[#F0EEE8]"
+                style={{ color: '#A6A29A' }}
               >
                 Clear all
               </button>
@@ -132,8 +131,8 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
           <div className="max-h-[360px] overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
-                <CheckCircle size={28} style={{ color: '#00C6C1', opacity: 0.4 }} />
-                <p className="text-[13px]" style={{ color: '#6B7A8D' }}>No active alerts</p>
+                <CheckCircle size={28} style={{ color: '#D99219', opacity: 0.4 }} />
+                <p className="text-[13px]" style={{ color: '#A6A29A' }}>No active alerts</p>
               </div>
             ) : (
               notifications.map((n) => (
@@ -141,22 +140,22 @@ const NotificationBell = ({ anomalies }: NotificationBellProps) => {
                   key={n.id}
                   className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.03]"
                   style={{
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
                     background: n.read ? 'transparent' : 'rgba(255,255,255,0.015)',
                   }}
                 >
                   <div className="mt-0.5">{iconMap[n.type]}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold leading-tight" style={{ color: '#F5F7FA' }}>{n.title}</p>
-                    <p className="mt-0.5 text-[11px] leading-snug line-clamp-2" style={{ color: '#6B7A8D' }}>{n.body}</p>
-                    <p className="mt-1 text-[10px]" style={{ color: '#3D4E60' }}>{n.time}</p>
+                    <p className="text-[12px] font-semibold leading-tight" style={{ color: '#F0EEE8' }}>{n.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug line-clamp-2" style={{ color: '#A6A29A' }}>{n.body}</p>
+                    <p className="mt-1 text-[10px]" style={{ color: '#6B6860' }}>{n.time}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => dismiss(n.id)}
                     aria-label="Dismiss notification"
                     className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded flex-shrink-0"
-                    style={{ color: '#6B7A8D' }}
+                    style={{ color: '#A6A29A' }}
                   >
                     <X size={13} />
                   </button>

@@ -23,15 +23,15 @@ const performanceClass = (value: string, expected: number) => {
   const ratio = Number(value) / expected;
   if (ratio < 0.8) return 'bg-[#FF4D4F]/10 text-[#FF8587]';
   if (ratio < 1) return 'bg-[#F59E0B]/10 text-[#F8BE58]';
-  if (ratio < 1.2) return 'bg-[#00E676]/10 text-[#6EF2A5]';
-  return 'bg-[#3B82F6]/12 text-[#80AEFF]';
+  if (ratio < 1.2) return 'bg-[#D99219]/10 text-[#F0AE35]';
+  return 'bg-[#D99219]/18 text-[#F8C850]';
 };
 
 const achievementClass = (achievement: number) => {
   if (achievement < 80) return 'text-[#FF7A7A]';
-  if (achievement < 100) return 'text-[#FFC857]';
-  if (achievement < 120) return 'text-[#A3FF12]';
-  return 'text-[#7AA7FF]';
+  if (achievement < 100) return 'text-[#F59E0B]';
+  if (achievement < 120) return 'text-[#D99219]';
+  return 'text-[#F0AE35]';
 };
 
 const ProductionMatrix = ({ rows, shift, timeSlots, validationErrors = {}, onChange }: ProductionMatrixProps) => {
@@ -143,35 +143,35 @@ const ProductionMatrix = ({ rows, shift, timeSlots, validationErrors = {}, onCha
 
   return (
     <div className="bg-white/[0.012]">
-      <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3 text-xs text-text-secondary">
+      <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3 text-xs text-[#A6A29A]">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-accent" />
+          <Sparkles size={14} className="text-[#D99219]" />
           <span>{summary.completed} machine rows active</span>
         </div>
-        <div className="font-medium text-text-primary">{summary.totalPieces.toLocaleString()} pieces entered</div>
+        <div className="font-medium text-[#F0EEE8]">{summary.totalPieces.toLocaleString()} pieces entered</div>
       </div>
       <div className="max-h-[590px] overflow-auto">
       <table className="min-w-[1120px] border-separate border-spacing-0 text-sm">
-        <thead className="sticky top-0 z-20 bg-[#0A171D]">
+        <thead className="sticky top-0 z-20 bg-[#171715]">
           <tr>
-            <th className="sticky left-0 z-30 w-28 bg-[#0A171D] px-3 py-3.5 text-left text-xs font-semibold text-[#94A3B8]">
+            <th className="sticky left-0 z-30 w-28 bg-[#171715] px-3 py-3.5 text-left text-xs font-semibold text-[#A6A29A]">
               Machine
             </th>
-            <th className="sticky left-28 z-30 w-28 bg-[#0A171D] px-3 py-3.5 text-left text-xs font-semibold text-[#94A3B8]">
+            <th className="sticky left-28 z-30 w-28 bg-[#171715] px-3 py-3.5 text-left text-xs font-semibold text-[#A6A29A]">
               Product
             </th>
             {(shift === 'C' ? ['Total Production'] : timeSlots).map((slot) => (
-              <th key={slot} className="min-w-24 px-3 py-3.5 text-center text-xs font-semibold text-[#94A3B8]">
+              <th key={slot} className="min-w-24 px-3 py-3.5 text-center text-xs font-semibold text-[#A6A29A]">
                 {slot}
               </th>
             ))}
-            <th className="min-w-28 px-3 py-3.5 text-right text-xs font-semibold text-[#94A3B8]">
+            <th className="min-w-28 px-3 py-3.5 text-right text-xs font-semibold text-[#A6A29A]">
               Total
             </th>
-            <th className="min-w-28 px-3 py-3.5 text-right text-xs font-semibold text-[#94A3B8]">
+            <th className="min-w-28 px-3 py-3.5 text-right text-xs font-semibold text-[#A6A29A]">
               Target
             </th>
-            <th className="min-w-32 px-3 py-3.5 text-right text-xs font-semibold text-[#94A3B8]">
+            <th className="min-w-32 px-3 py-3.5 text-right text-xs font-semibold text-[#A6A29A]">
               Achievement
             </th>
             <th className="w-14" aria-label="Row actions" />
@@ -184,10 +184,10 @@ const ProductionMatrix = ({ rows, shift, timeSlots, validationErrors = {}, onCha
             const expected = row.targetPieces / (shift === 'C' ? 1 : timeSlots.length);
             return (
               <tr key={row.machineNo} className="group transition hover:bg-white/[0.025]">
-                <th className="sticky left-0 z-10 bg-[#0E2028] px-3 py-2 text-left font-semibold text-white">
+                <th className="sticky left-0 z-10 bg-[#1C1B18] px-3 py-2 text-left font-semibold text-[#F0EEE8]">
                   {row.machineNo}
                 </th>
-                <td className="sticky left-28 z-10 bg-[#0E2028] px-3 py-2 text-[#00FFC8]">
+                <td className="sticky left-28 z-10 bg-[#1C1B18] px-3 py-2 text-[#D99219]">
                   {row.productCode}
                 </td>
                 {row.values.map((value, columnIndex) => (
@@ -206,7 +206,7 @@ const ProductionMatrix = ({ rows, shift, timeSlots, validationErrors = {}, onCha
                       onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
                       onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex)}
                       onPaste={(event) => handlePaste(event, rowIndex, columnIndex)}
-                      className={`h-10 w-full min-w-20 rounded-lg border-0 px-2 text-center font-medium outline-none ring-inset transition focus:ring-2 focus:ring-[#00FFC8]/60 ${performanceClass(value, expected)} ${validationErrors[`${rowIndex}:${columnIndex}`] ? 'border border-[#FF4D4F]/40 bg-[#FF4D4F]/10' : ''}`}
+                      className={`h-10 w-full min-w-20 rounded-none border-0 px-2 text-center font-medium outline-none ring-inset transition focus:ring-2 focus:ring-[#D99219]/60 ${performanceClass(value, expected)} ${validationErrors[`${rowIndex}:${columnIndex}`] ? 'border border-[#FF4D4F]/40 bg-[#FF4D4F]/10' : ''}`}
                     />
                   </td>
                 ))}
@@ -222,7 +222,7 @@ const ProductionMatrix = ({ rows, shift, timeSlots, validationErrors = {}, onCha
                 <td className="text-center">
                   <button
                     onClick={() => void copyRow(row)}
-                    className="inline-flex h-8 w-8 items-center justify-center text-[#E8FDF5]/45 transition hover:text-[#00FFC6]"
+                    className="inline-flex h-8 w-8 items-center justify-center text-[#A6A29A]/50 transition hover:text-[#D99219]"
                     title="Copy row values"
                   >
                     <ClipboardCopy size={15} />
