@@ -7,9 +7,41 @@ import type {
   ShiftSubmissionResponse,
   MachineMaster,
 } from '../types/production';
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ??
-  'https://prodtrack-ai.onrender.com';
+/**
+ * Resolve API base at runtime to allow switching endpoints without rebuild.
+ * Order of precedence:
+ * 1. window.__API_BASE__ (can be injected at runtime)
+ * 2. localStorage key `PRODTRACK_API_BASE`
+ * 3. build-time env `VITE_API_BASE_URL`
+ * 4. fallback to localhost:8001
+ */
+const getApiBase = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      // runtime injected global (useful for static hosting configuration)
+      const win = window as any;
+      if (win.__API_BASE__) return String(win.__API_BASE__);
+
+      const stored = window.localStorage.getItem('PRODTRACK_API_BASE');
+      if (stored) return stored;
+    }
+  } catch (e) {
+    // ignore access errors in unusual environments
+  }
+
+  return import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8001';
+};
+
+export const setApiBase = (url: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (!url) {
+    window.localStorage.removeItem('PRODTRACK_API_BASE');
+  } else {
+    window.localStorage.setItem('PRODTRACK_API_BASE', url);
+  }
+};
+
+export const getApiBaseUrl = () => getApiBase();
 const cache = new Map<string, { expiresAt: number; promise: Promise<unknown> }>();
 
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -24,6 +56,7 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     }
   }
 
+  const API_BASE = getApiBase();
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,

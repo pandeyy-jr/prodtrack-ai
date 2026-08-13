@@ -81,6 +81,23 @@ npm run build
 
 Set `VITE_API_BASE_URL` to the deployed FastAPI URL before building.
 
+Runtime API configuration
+-------------------------
+
+The frontend supports changing the API endpoint at runtime without rebuilding. Options (highest → lowest precedence):
+
+- Set a global `window.__API_BASE__` before the app loads (useful for static hosts). Example in `index.html`:
+
+```html
+<script>window.__API_BASE__ = 'https://your-backend.example.com'</script>
+```
+
+- Use the browser devtools to set `localStorage.setItem('PRODTRACK_API_BASE', 'https://your-backend.example.com')`.
+- Build-time environment: set `VITE_API_BASE_URL` (used when no runtime override exists).
+- If none set, the app falls back to `http://127.0.0.1:8001`.
+
+This allows you to deploy the frontend as static files and point it at different backend URLs without rebuilding.
+
 ## API
 
 - `POST /supervisor/submit-shift`
