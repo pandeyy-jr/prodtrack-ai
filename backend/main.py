@@ -13,13 +13,19 @@ DB_PATH = BACKEND_DIR / "prodtrack.db"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DB_PATH.as_posix()}")
 
 # CORS for frontend
+# Allow configuring CORS origins via environment variable for deployed frontends.
+# Set `CORS_ALLOW_ORIGINS` to a comma-separated list of origins (e.g.
+# "https://your-vercel-app.vercel.app,https://admin.example.com"). If not set,
+# fall back to sensible local and demo origins.
+raw_origins = os.getenv(
+    "CORS_ALLOW_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,https://prodtrack-ai.vercel.app",
+)
+allow_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://prodtrack-ai.vercel.app",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
